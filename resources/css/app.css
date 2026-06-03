@@ -1,0 +1,103 @@
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --glpi-bg: #f6f8fb;
+  --glpi-surface: #f4f7fa;
+  --glpi-panel: #ffffff;
+  --glpi-ink: #0f172a;
+  --glpi-muted: #5f6f84;
+  --glpi-line: #d9e1ea;
+  --glpi-dark: #214064;
+  --glpi-darker: #0e2a49;
+  --glpi-accent: #214064;
+  --glpi-warn: #c08a21;
+  --glpi-danger: #9f2f2f;
+  --glpi-green: #16724f;
+}
+
+body {
+  @apply antialiased;
+  background: var(--glpi-bg);
+  color: var(--glpi-ink);
+  font-family: "Geist", "Geist Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+button, input, select, textarea {
+  font: inherit;
+}
+
+button, a, input, select, textarea {
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, box-shadow 150ms ease, transform 150ms ease, opacity 150ms ease;
+}
+
+::selection {
+  background: #214064;
+  color: #fff;
+}
+
+@layer components {
+  .panel {
+    @apply border border-slate-200 bg-white shadow-sm;
+  }
+
+  .panel-header {
+    @apply border-b border-slate-200 bg-slate-50 px-4 py-3;
+  }
+
+  .section-title {
+    @apply text-sm font-black text-slate-950;
+  }
+
+  .eyebrow {
+    @apply text-[11px] font-black uppercase tracking-[0.16em] text-slate-500;
+  }
+
+  .field {
+    @apply min-h-11 w-full border border-slate-300 bg-slate-50 px-3 text-sm font-semibold text-slate-950 outline-none placeholder:text-slate-400 focus:border-[#214064] focus:bg-white focus:ring-2 focus:ring-[#214064]/15;
+  }
+
+  .textarea-field {
+    @apply w-full border border-slate-300 bg-slate-50 p-3 text-sm font-semibold text-slate-950 outline-none placeholder:text-slate-400 focus:border-[#214064] focus:bg-white focus:ring-2 focus:ring-[#214064]/15;
+  }
+
+  .btn {
+    @apply inline-flex min-h-11 items-center justify-center gap-2 border px-4 text-sm font-black outline-none focus-visible:ring-2 focus-visible:ring-[#214064] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-45;
+  }
+
+  .btn-primary {
+    @apply border-[#214064] bg-[#214064] text-white hover:bg-[#0e2a49];
+  }
+
+  .btn-secondary {
+    @apply border-slate-300 bg-white text-slate-800 hover:border-[#214064] hover:bg-slate-50 hover:text-[#214064];
+  }
+
+  .btn-success {
+    @apply border-emerald-700 bg-emerald-700 text-white hover:bg-emerald-800;
+  }
+
+  .btn-danger {
+    @apply border-red-300 bg-white text-red-800 hover:border-red-700 hover:bg-red-50 hover:text-red-900;
+  }
+
+  .btn-warning {
+    @apply border-amber-300 bg-amber-50 text-amber-900 hover:border-amber-600 hover:bg-amber-100;
+  }
+
+  .link-action {
+    @apply font-black text-[#214064] underline-offset-4 hover:text-[#0e2a49] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#214064] focus-visible:ring-offset-2;
+  }
+
+  .table-head {
+    @apply border-b border-slate-200 bg-slate-100 text-[11px] uppercase tracking-[0.16em] text-slate-500;
+  }
+
+  .table-row {
+    @apply border-t border-slate-200 bg-white hover:bg-slate-50;
+  }
+}

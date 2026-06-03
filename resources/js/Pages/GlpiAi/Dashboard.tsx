@@ -1,0 +1,102 @@
+import { Head, Link } from '@inertiajs/react';
+import { AlertTriangle, CheckCircle2, Clock, Cpu, FileWarning, Gauge, ListChecks } from 'lucide-react';
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { GlpiAiLayout } from '../../Layouts/GlpiAiLayout';
+import { MetricCard } from '../../Components/GlpiAi/MetricCard';
+
+export default function Dashboard({ metrics, dryRun, autoAssign }: { metrics: Record<string, any>; dryRun: boolean; autoAssign: boolean }) {
+  const chartData = [
+    { name: '24h', total: metrics.last_24h ?? 0 },
+    { name: '7 dias', total: metrics.last_7d ?? 0 },
+  ];
+  const pending = Number(metrics.pending ?? 0);
+  const failures = (metrics.recent_errors ?? []).length;
+
+  return (
+    <GlpiAiLayout title="Dashboard operacional" dryRun={dryRun} autoAssign={autoAssign}>
+      <Head title="Dashboard | GLPI BOT" />
+
+      <section className="mb-5 grid gap-4 xl:grid-cols-[1fr_1fr_1fr]">
+        <div className="border border-[#214064]/20 bg-[#214064] p-5 text-white shadow-sm">
+          <p className="text-[11px] font-black uppercase tracking-wide text-white/55">Estado do robo</p>
+          <div className="mt-3 flex items-center justify-between gap-4">
+            <div>
+              <p className="text-2xl font-black">{metrics.dry_run ? 'Simulação' : 'Execução real'}</p>
+              <p className="mt-1 text-sm text-white/60">{metrics.auto_assign ? 'Autoatribuicao habilitada' : 'Autoatribuicao inativa'}</p>
+            </div>
+            <Cpu size={34} className="text-blue-100" />
+          </div>
+        </div>
+
+        <div className="panel p-5">
+          <p className="text-xs font-black uppercase tracking-wide text-slate-500">Fila de validacao</p>
+          <div className="mt-3 flex items-center justify-between gap-4">
+            <div>
+              <p className="text-3xl font-black">{pending}</p>
+              <p className="mt-1 text-sm text-slate-500">sugestoes aguardando decisao humana</p>
+            </div>
+            <Link href="/glpi-ai/suggestions?status=pending" className="btn btn-primary">Abrir fila</Link>
+          </div>
+        </div>
+
+        <div className={`border p-5 shadow-sm ${failures > 0 ? 'border-red-200 bg-red-50' : 'border-slate-200 bg-white'}`}>
+          <p className="text-xs font-black uppercase tracking-wide text-slate-500">Saude recente</p>
+          <div className="mt-3 flex items-center justify-between gap-4">
+            <div>
+              <p className="text-3xl font-black">{failures}</p>
+              <p className="mt-1 text-sm text-slate-500">falhas recentes registradas</p>
+            </div>
+            <AlertTriangle size={32} className={failures > 0 ? 'text-[#9f2f2f]' : 'text-[var(--glpi-accent)]'} />
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <MetricCard label="Chamados analisados" value={metrics.total_analyzed ?? 0} icon={<ListChecks size={18} />} />
+        <MetricCard label="Aprovadas" value={metrics.accepted ?? 0} icon={<CheckCircle2 size={18} />} />
+        <MetricCard label="Triagem manual" value={metrics.manual_triage ?? 0} icon={<FileWarning size={18} />} />
+        <MetricCard label="Confiança média" value={`${Number(metrics.average_confidence ?? 0).toFixed(1)}%`} icon={<Gauge size={18} />} />
+        <MetricCard label="Rejeitadas" value={metrics.rejected ?? 0} />
+        <MetricCard label="Autoatribuidas" value={metrics.auto_assigned ?? 0} />
+        <MetricCard label="Ultimas 24h" value={metrics.last_24h ?? 0} icon={<Clock size={18} />} />
+        <MetricCard label="Ultimos 7 dias" value={metrics.last_7d ?? 0} />
+      </section>
+
+      <section className="mt-5 grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
+        <div className="panel p-5">
+          <div className="flex items-center justify-between">
+            <h2 className="font-black">Volume de analises</h2>
+            <span className="text-xs font-black uppercase tracking-wide text-slate-500">operacional</span>
+          </div>
+          <div className="mt-4 h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData}>
+                <CartesianGrid stroke="#e2e8f0" vertical={false} />
+                <XAxis dataKey="name" />
+                <YAxis allowDecimals={false} />
+                <Tooltip />
+                <Bar dataKey="total" fill="#214064" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="panel p-5">
+          <div className="flex items-center justify-between">
+            <h2 className="font-black">Ocorrencias recentes</h2>
+            <Link href="/glpi-ai/audit" className="link-action text-sm">Ver auditoria</Link>
+          </div>
+          <div className="mt-4 divide-y divide-slate-200 rounded-lg border border-slate-200">
+            {(metrics.recent_errors ?? []).length === 0 ? <p className="p-4 text-sm font-semibold text-slate-500">Nenhuma falha recente.</p> : null}
+            {(metrics.recent_errors ?? []).map((error: any) => (
+              <div key={error.id} className="bg-red-50 p-3 text-sm">
+                <p className="font-black text-red-950">Chamado #{error.glpi_ticket_id}</p>
+                <p className="mt-1 text-red-900">{error.error_message}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    </GlpiAiLayout>
+  );
+}
