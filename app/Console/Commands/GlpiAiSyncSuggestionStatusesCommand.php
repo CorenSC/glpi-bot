@@ -7,7 +7,9 @@ namespace App\Console\Commands;
 use App\Enums\SuggestionStatus;
 use App\Models\GlpiAiAssignmentSuggestion;
 use App\Models\GlpiAiHumanFeedback;
+use App\Models\GlpiAiOperationalRun;
 use App\Repositories\Glpi\GlpiTicketApiRepository;
+use App\Services\GlpiAi\OperationalRunService;
 use Illuminate\Console\Command;
 
 class GlpiAiSyncSuggestionStatusesCommand extends Command
@@ -16,7 +18,14 @@ class GlpiAiSyncSuggestionStatusesCommand extends Command
 
     protected $description = 'Atualiza sugestoes locais quando o chamado correspondente for solucionado/fechado no GLPI.';
 
-    public function handle(GlpiTicketApiRepository $tickets): int
+    public function handle(GlpiTicketApiRepository $tickets, OperationalRunService $runs): int
+    {
+        return $runs->run('glpi-ai:sync-suggestion-statuses', fn (GlpiAiOperationalRun $run): int => $this->executeCommand($tickets, $run), [
+            'limit' => (int) $this->option('limit'),
+        ]);
+    }
+
+    private function executeCommand(GlpiTicketApiRepository $tickets, GlpiAiOperationalRun $run): int
     {
         $statuses = (array) config('glpi-ai.historical_ticket_statuses', [5, 6]);
         $suggestions = GlpiAiAssignmentSuggestion::query()
@@ -54,6 +63,13 @@ class GlpiAiSyncSuggestionStatusesCommand extends Command
         }
 
         $this->info("Sugestoes finalizadas por status do GLPI: {$closed}.");
+        $run->update([
+            'summary' => "Sugestoes finalizadas por status do GLPI: {$closed}.",
+            'metadata' => array_merge($run->metadata ?? [], [
+                'checked' => $suggestions->count(),
+                'closed' => $closed,
+            ]),
+        ]);
 
         return self::SUCCESS;
     }

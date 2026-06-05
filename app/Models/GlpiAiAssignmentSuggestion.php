@@ -20,6 +20,8 @@ class GlpiAiAssignmentSuggestion extends Model
         'glpi_payload' => 'array',
         'glpi_api_response' => 'array',
         'action_taken_at' => 'datetime',
+        'archived_at' => 'datetime',
+        'ai_validation_next_retry_at' => 'datetime',
     ];
 
     public function analysisRun(): BelongsTo

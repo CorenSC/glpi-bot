@@ -8,6 +8,7 @@ use App\AI\Embeddings\EmbeddingProviderInterface;
 use App\Enums\RecommendedAction;
 use App\Enums\SuggestionStatus;
 use App\Jobs\AssignGlpiTicketJob;
+use App\Jobs\RevalidateSuggestionAiJob;
 use App\Models\GlpiAiAnalysisRun;
 use App\Models\GlpiAiAssignmentSuggestion;
 use App\Models\GlpiAiTechnicianScore;
@@ -126,6 +127,10 @@ final class GlpiAiAnalysisOrchestrator
                     'ai_payload' => $aiResult['payload'] ?? null,
                     'ai_raw_response' => $aiResult['raw'] ?? null,
                     'ai_parsed_response' => $aiResult['parsed'] ?? null,
+                    'ai_validation_status' => isset($aiResult['error']) ? 'failed' : 'completed',
+                    'ai_validation_attempts' => isset($aiResult['error']) ? 1 : 0,
+                    'ai_validation_next_retry_at' => isset($aiResult['error']) ? now()->addMinutes(5) : null,
+                    'ai_validation_error' => $aiResult['error'] ?? null,
                     'ranking_payload' => $ranking,
                 ];
 
@@ -140,6 +145,12 @@ final class GlpiAiAnalysisOrchestrator
 
             if (! (bool) config('glpi-ai.require_human_approval', true) && ! $run->dry_run && (bool) config('glpi-ai.auto_assign') && $final['recommended_action'] !== RecommendedAction::ManualTriage->value) {
                 AssignGlpiTicketJob::dispatch($suggestion)->onQueue((string) config('glpi-ai.queue_name', 'glpi-ai'));
+            }
+
+            if (isset($aiResult['error']) && $suggestion->ai_validation_attempts < 3) {
+                RevalidateSuggestionAiJob::dispatch($suggestion->id)
+                    ->delay(now()->addMinutes(5))
+                    ->onQueue((string) config('glpi-ai.queue_name', 'glpi-ai'));
             }
 
             return $suggestion;
@@ -172,6 +183,84 @@ final class GlpiAiAnalysisOrchestrator
             }
 
             return GlpiAiAssignmentSuggestion::query()->create($payload);
+        }
+    }
+
+    public function revalidateAi(GlpiAiAssignmentSuggestion $suggestion): GlpiAiAssignmentSuggestion
+    {
+        $suggestion->loadMissing('analysisRun');
+        $run = $suggestion->analysisRun;
+
+        if (! $run instanceof GlpiAiAnalysisRun) {
+            throw new \RuntimeException("Suggestion {$suggestion->id} has no analysis run.");
+        }
+
+        $ranking = (array) ($suggestion->ranking_payload ?: $run->deterministic_decision ?: []);
+        if ($ranking === []) {
+            throw new \RuntimeException("Suggestion {$suggestion->id} has no ranking payload.");
+        }
+
+        $sensitive = (array) ($run->sensitive_words_found ?? []);
+        $ticket = [
+            'glpi_ticket_id' => $suggestion->glpi_ticket_id,
+            'title' => $suggestion->title,
+            'category_id' => $suggestion->category_id,
+            'category_name' => $suggestion->category_name,
+            'canonical_text' => $run->canonical_text,
+            'content' => $run->normalized_text,
+        ];
+
+        $attempts = (int) $suggestion->ai_validation_attempts + 1;
+        $suggestion->update([
+            'ai_validation_status' => 'running',
+            'ai_validation_attempts' => $attempts,
+            'ai_validation_error' => null,
+            'ai_validation_next_retry_at' => null,
+        ]);
+
+        try {
+            $aiResult = $this->ai->validateRecommendation($ticket, $ranking, $sensitive);
+            $final = $this->decisions->finalDecision($ranking, $aiResult['parsed'] ?? null, $sensitive);
+
+            DB::transaction(function () use ($suggestion, $run, $aiResult, $final): void {
+                $run->update([
+                    'ai_decision' => $aiResult['parsed'] ?? null,
+                    'final_decision' => $final,
+                    'recommended_action' => $final['recommended_action'],
+                    'recommended_technician_id' => $final['recommended_technician_id'],
+                    'recommended_group_id' => $final['recommended_group_id'],
+                    'confidence' => $final['confidence'],
+                    'risk_level' => $final['risk_level'],
+                ]);
+
+                $suggestion->update([
+                    'recommended_action' => $final['recommended_action'],
+                    'recommended_technician_id' => $final['recommended_technician_id'],
+                    'recommended_technician_name' => collect($suggestion->ranking_payload['technicians'] ?? [])->firstWhere('technician_id', $final['recommended_technician_id'])['technician_name'] ?? null,
+                    'recommended_group_id' => $final['recommended_group_id'],
+                    'recommended_group_name' => collect($suggestion->ranking_payload['groups'] ?? [])->firstWhere('group_id', $final['recommended_group_id'])['group_name'] ?? null,
+                    'confidence' => $final['confidence'],
+                    'reason' => $final['reason'],
+                    'warnings' => $final['warnings'],
+                    'risk_level' => $final['risk_level'],
+                    'ai_payload' => $aiResult['payload'] ?? null,
+                    'ai_raw_response' => $aiResult['raw'] ?? null,
+                    'ai_parsed_response' => $aiResult['parsed'] ?? null,
+                    'ai_validation_status' => 'completed',
+                    'ai_validation_error' => null,
+                    'ai_validation_next_retry_at' => null,
+                ]);
+            });
+
+            return $suggestion->fresh();
+        } catch (Throwable $throwable) {
+            $suggestion->update([
+                'ai_validation_status' => 'failed',
+                'ai_validation_error' => $throwable->getMessage(),
+                'ai_validation_next_retry_at' => $attempts < 3 ? now()->addMinutes(5 * $attempts) : null,
+            ]);
+
+            throw $throwable;
         }
     }
 }

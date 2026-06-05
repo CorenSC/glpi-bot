@@ -32,6 +32,7 @@ class AssignmentSuggestionController extends Controller
         ];
 
         $suggestions = GlpiAiAssignmentSuggestion::query()
+            ->when($view !== 'all', fn ($query) => $query->whereNull('archived_at'))
             ->when($view !== 'all' && ! $request->filled('status'), fn ($query) => $query->where('status', $statusByView[$view]))
             ->when($request->filled('search'), function ($query) use ($request): void {
                 $search = $request->string('search')->toString();
@@ -49,6 +50,7 @@ class AssignmentSuggestionController extends Controller
             ->withQueryString();
 
         $tabCounts = GlpiAiAssignmentSuggestion::query()
+            ->whereNull('archived_at')
             ->selectRaw('status, count(*) as total')
             ->groupBy('status')
             ->pluck('total', 'status')

@@ -27,6 +27,7 @@ Route::middleware(['web', 'auth'])->prefix('glpi-ai')->name('glpi-ai.')->group(f
     Route::post('/suggestions/{suggestion}/assign-group', [AssignmentSuggestionActionController::class, 'assignGroup'])->name('suggestions.assign-group');
     Route::post('/suggestions/{suggestion}/manual-triage', [AssignmentSuggestionActionController::class, 'manualTriage'])->name('suggestions.manual-triage');
     Route::post('/suggestions/{suggestion}/recalculate', [AssignmentSuggestionActionController::class, 'recalculate'])->name('suggestions.recalculate');
+    Route::post('/suggestions/{suggestion}/revalidate-ai', [AssignmentSuggestionActionController::class, 'revalidateAi'])->name('suggestions.revalidate-ai');
     Route::get('/manual-analysis', [ManualAnalysisController::class, 'create'])->name('manual-analysis.create');
     Route::post('/manual-analysis', [ManualAnalysisController::class, 'store'])->middleware('throttle:manual-glpi-ai')->name('manual-analysis.store');
     Route::get('/audit', GlpiAiAuditController::class)->name('audit.index');

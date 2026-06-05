@@ -60,6 +60,10 @@ export default function Dashboard({ metrics, dryRun, autoAssign }: { metrics: Re
         <MetricCard label="Autoatribuidas" value={metrics.auto_assigned ?? 0} />
         <MetricCard label="Ultimas 24h" value={metrics.last_24h ?? 0} icon={<Clock size={18} />} />
         <MetricCard label="Ultimos 7 dias" value={metrics.last_7d ?? 0} />
+        <MetricCard label="Jobs pendentes" value={metrics.queue_pending_jobs ?? 0} />
+        <MetricCard label="Jobs falhados" value={metrics.queue_failed_jobs ?? 0} icon={<AlertTriangle size={18} />} />
+        <MetricCard label="Ultimo chamado" value={metrics.last_analyzed_ticket?.glpi_ticket_id ? `#${metrics.last_analyzed_ticket.glpi_ticket_id}` : '-'} />
+        <MetricCard label="Ultimo erro IA" value={metrics.last_ai_error ? `#${metrics.last_ai_error.glpi_ticket_id}` : '-'} />
       </section>
 
       <section className="mt-5 grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
@@ -97,6 +101,41 @@ export default function Dashboard({ metrics, dryRun, autoAssign }: { metrics: Re
           </div>
         </div>
       </section>
+
+      <section className="panel mt-5 p-5">
+        <div className="flex items-center justify-between">
+          <h2 className="font-black">Execucoes operacionais</h2>
+          <span className="text-xs font-black uppercase tracking-wide text-slate-500">scheduler e comandos</span>
+        </div>
+        <div className="mt-4 overflow-x-auto">
+          <table className="min-w-full text-left text-sm">
+            <thead className="border-b border-slate-200 bg-slate-100 text-[11px] uppercase tracking-[0.16em] text-slate-500">
+              <tr>
+                <th className="p-3">Comando</th>
+                <th className="p-3">Status</th>
+                <th className="p-3">Duracao</th>
+                <th className="p-3">Resumo</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(metrics.last_operational_runs ?? []).map((run: any) => (
+                <tr key={run.id} className="border-b border-slate-200">
+                  <td className="p-3 font-black text-slate-950">{run.command}</td>
+                  <td className="p-3 font-bold">{run.status}</td>
+                  <td className="p-3">{run.duration_ms ? `${(Number(run.duration_ms) / 1000).toFixed(1)}s` : '-'}</td>
+                  <td className="p-3 text-slate-600">{run.error_message || run.summary || '-'}</td>
+                </tr>
+              ))}
+              {(metrics.last_operational_runs ?? []).length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="p-4 text-sm font-semibold text-slate-500">Nenhuma execucao operacional registrada ainda.</td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </GlpiAiLayout>
   );
 }
+

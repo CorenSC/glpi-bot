@@ -325,7 +325,19 @@ export default function SuggestionShow({ suggestion, dryRun, autoAssign, glpiWeb
               <button type="button" onClick={() => router.post(`/glpi-ai/suggestions/${suggestion.id}/recalculate`)} className="btn btn-secondary w-full">
                 <RotateCcw size={16} /> Recalcular
               </button>
+              <button type="button" onClick={() => router.post(`/glpi-ai/suggestions/${suggestion.id}/revalidate-ai`)} className="btn btn-secondary w-full">
+                <Sparkles size={16} /> Reanalisar IA
+              </button>
             </div>
+
+            {suggestion.ai_validation_status ? (
+              <div className="mt-4 border border-slate-200 bg-slate-50 p-3 text-xs font-semibold text-slate-600">
+                <p className="font-black uppercase tracking-wide text-slate-500">ValidaÃ§Ã£o da IA</p>
+                <p className="mt-1">Status: {suggestion.ai_validation_status}</p>
+                {suggestion.ai_validation_attempts ? <p>Tentativas: {suggestion.ai_validation_attempts}</p> : null}
+                {suggestion.ai_validation_error ? <p className="mt-1 text-[#9f2f2f]">{suggestion.ai_validation_error}</p> : null}
+              </div>
+            ) : null}
           </section>
 
           <section className="panel p-5">

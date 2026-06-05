@@ -7,7 +7,9 @@ namespace App\Console\Commands;
 use App\Jobs\AnalyzeNewGlpiTicketJob;
 use App\Models\GlpiAiAnalysisRun;
 use App\Models\GlpiAiAssignmentSuggestion;
+use App\Models\GlpiAiOperationalRun;
 use App\Repositories\Glpi\GlpiTicketApiRepository;
+use App\Services\GlpiAi\OperationalRunService;
 use Illuminate\Console\Command;
 
 class GlpiAiAnalyzeNewTicketsCommand extends Command
@@ -16,7 +18,14 @@ class GlpiAiAnalyzeNewTicketsCommand extends Command
 
     protected $description = 'Analisa chamados novos do GLPI e cria sugestoes de atribuicao.';
 
-    public function handle(GlpiTicketApiRepository $tickets): int
+    public function handle(GlpiTicketApiRepository $tickets, OperationalRunService $runs): int
+    {
+        return $runs->run('glpi-ai:analyze-new-tickets', fn (GlpiAiOperationalRun $run): int => $this->executeCommand($tickets, $run), [
+            'limit' => (int) $this->option('limit'),
+        ]);
+    }
+
+    private function executeCommand(GlpiTicketApiRepository $tickets, GlpiAiOperationalRun $run): int
     {
         $inspection = $tickets->findNewTicketsInspection((int) $this->option('limit'));
         $items = $inspection['items'];
@@ -40,6 +49,17 @@ class GlpiAiAnalyzeNewTicketsCommand extends Command
         $this->line('Chamados ignorados por ja terem analise/sugestao: '.count($ignoredIds).'.');
         $this->info("Analises enviadas para processamento: {$items->count()}.");
         $items->each(fn (array $ticket) => AnalyzeNewGlpiTicketJob::dispatch($ticket, false));
+        $run->update([
+            'summary' => "Chamados verificados: {$inspection['scanned']}; enviados para analise: {$items->count()}.",
+            'metadata' => array_merge($run->metadata ?? [], [
+                'scanned' => $inspection['scanned'],
+                'status_matched' => $inspection['status_matched'],
+                'assigned_filtered' => $inspection['assigned_filtered'],
+                'ignored_existing' => count($ignoredIds),
+                'dispatched' => $items->count(),
+                'ticket_ids' => $items->pluck('glpi_ticket_id')->values()->all(),
+            ]),
+        ]);
 
         return self::SUCCESS;
     }

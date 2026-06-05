@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Jobs\SyncGlpiTicketHistoryJob;
+use App\Models\GlpiAiOperationalRun;
 use App\Models\GlpiAiSetting;
 use App\Models\GlpiAiTicketHistory;
 use App\Repositories\Glpi\GlpiTicketApiRepository;
+use App\Services\GlpiAi\OperationalRunService;
 use Illuminate\Console\Command;
 
 class GlpiAiSyncHistoryCommand extends Command
@@ -21,7 +23,18 @@ class GlpiAiSyncHistoryCommand extends Command
 
     protected $description = 'Importa chamados solucionados/fechados do GLPI para a base interna da IA.';
 
-    public function handle(GlpiTicketApiRepository $tickets): int
+    public function handle(GlpiTicketApiRepository $tickets, OperationalRunService $runs): int
+    {
+        return $runs->run('glpi-ai:sync-history', fn (GlpiAiOperationalRun $run): int => $this->executeCommand($tickets, $run), [
+            'limit' => (int) $this->option('limit'),
+            'batch' => (int) $this->option('batch'),
+            'start' => $this->option('start'),
+            'fresh' => (bool) $this->option('fresh'),
+            'refresh_existing' => (bool) $this->option('refresh-existing'),
+        ]);
+    }
+
+    private function executeCommand(GlpiTicketApiRepository $tickets, GlpiAiOperationalRun $run): int
     {
         $limit = (int) $this->option('limit');
         $batch = max(1, (int) $this->option('batch'));
@@ -55,6 +68,15 @@ class GlpiAiSyncHistoryCommand extends Command
         }
 
         $this->info("Importacao enviada: {$dispatched} chamados historicos; {$skippedExisting} ja estavam importados; {$scanned} registros GLPI verificados.");
+        $run->update([
+            'summary' => "Importacao enviada: {$dispatched} historicos; {$skippedExisting} ja importados; {$scanned} registros verificados.",
+            'metadata' => array_merge($run->metadata ?? [], [
+                'dispatched' => $dispatched,
+                'skipped_existing' => $skippedExisting,
+                'scanned' => $scanned,
+                'next_offset' => $this->startOffset(),
+            ]),
+        ]);
 
         return self::SUCCESS;
     }

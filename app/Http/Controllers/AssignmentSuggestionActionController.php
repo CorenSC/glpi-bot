@@ -9,6 +9,7 @@ use App\Enums\RecommendedAction;
 use App\Http\Requests\HumanSuggestionActionRequest;
 use App\Jobs\AssignGlpiTicketJob;
 use App\Jobs\RecalculateSuggestionJob;
+use App\Jobs\RevalidateSuggestionAiJob;
 use App\Models\GlpiAiAssignmentSuggestion;
 use App\Services\GlpiAi\HumanFeedbackService;
 use Illuminate\Http\RedirectResponse;
@@ -80,5 +81,15 @@ class AssignmentSuggestionActionController extends Controller
             ->onQueue((string) config('glpi-ai.queue_name', 'glpi-ai'));
 
         return back()->with('success', 'Recalculo enviado para a fila. Processe pelo terminal com queue:work.');
+    }
+
+    public function revalidateAi(GlpiAiAssignmentSuggestion $suggestion): RedirectResponse
+    {
+        $this->authorize('approve', $suggestion);
+        RevalidateSuggestionAiJob::dispatch($suggestion->id)
+            ->onConnection('database')
+            ->onQueue((string) config('glpi-ai.queue_name', 'glpi-ai'));
+
+        return back()->with('success', 'Reanalise da IA enviada para a fila.');
     }
 }

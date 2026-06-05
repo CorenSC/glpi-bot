@@ -16,6 +16,11 @@ export interface Suggestion {
   warnings?: string[];
   risk_level: RiskLevel;
   status: SuggestionStatus;
+  archived_at?: string;
+  ai_validation_status?: 'pending' | 'running' | 'completed' | 'failed';
+  ai_validation_attempts?: number;
+  ai_validation_next_retry_at?: string;
+  ai_validation_error?: string;
   created_at: string;
   analysis_run?: AnalysisRun;
   feedbacks?: HumanFeedback[];
