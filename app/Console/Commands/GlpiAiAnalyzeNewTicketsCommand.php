@@ -16,7 +16,7 @@ class GlpiAiAnalyzeNewTicketsCommand extends Command
 {
     protected $signature = 'glpi-ai:analyze-new-tickets {--limit=50}';
 
-    protected $description = 'Analisa chamados novos do GLPI e cria sugestoes de atribuicao.';
+    protected $description = 'Analisa chamados novos do GLPI e cria sugestões de atribuição.';
 
     public function handle(GlpiTicketApiRepository $tickets, OperationalRunService $runs): int
     {
@@ -44,13 +44,13 @@ class GlpiAiAnalyzeNewTicketsCommand extends Command
             ->values();
 
         $this->line("Chamados recentes verificados na API do GLPI: {$inspection['scanned']}.");
-        $this->line("Chamados com status configurado para analise: {$inspection['status_matched']}.");
-        $this->line("Chamados ignorados por ja terem atribuicao que bloqueia analise: {$inspection['assigned_filtered']}.");
-        $this->line('Chamados ignorados por ja terem analise/sugestao: '.count($ignoredIds).'.');
+        $this->line("Chamados com status configurado para análise: {$inspection['status_matched']}.");
+        $this->line("Chamados ignorados por já terem atribuição que bloqueia análise: {$inspection['assigned_filtered']}.");
+        $this->line('Chamados ignorados por já terem análise/sugestão: '.count($ignoredIds).'.');
         $this->info("Analises enviadas para processamento: {$items->count()}.");
         $items->each(fn (array $ticket) => AnalyzeNewGlpiTicketJob::dispatch($ticket, false));
         $run->update([
-            'summary' => "Chamados verificados: {$inspection['scanned']}; enviados para analise: {$items->count()}.",
+            'summary' => "Chamados verificados: {$inspection['scanned']}; enviados para análise: {$items->count()}.",
             'metadata' => array_merge($run->metadata ?? [], [
                 'scanned' => $inspection['scanned'],
                 'status_matched' => $inspection['status_matched'],

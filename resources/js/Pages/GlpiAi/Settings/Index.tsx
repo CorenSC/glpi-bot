@@ -3,7 +3,7 @@ import { Lock, Settings } from 'lucide-react';
 import { GlpiAiLayout } from '../../../Layouts/GlpiAiLayout';
 
 function stringify(value: unknown) {
-  if (typeof value === 'boolean') return value ? 'Sim' : 'Nao';
+  if (typeof value === 'boolean') return value ? 'Sim' : 'Não';
   if (Array.isArray(value)) return value.join(', ');
   if (typeof value === 'object' && value !== null) return JSON.stringify(value);
   return String(value ?? '-');
@@ -20,11 +20,11 @@ export default function SettingsIndex({ settings, editable, dryRun, autoAssign }
         <div className="flex items-center gap-3">
           <Settings size={20} />
           <div>
-            <h2 className="font-black">Configuracao operacional carregada</h2>
-            <p className="mt-1 text-sm text-white/60">Esta tela e para conferencia. Tokens e segredos nao sao exibidos.</p>
+            <h2 className="font-black">Configuração operacional carregada</h2>
+            <p className="mt-1 text-sm text-white/60">Esta tela é para conferência. Tokens e segredos não são exibidos.</p>
           </div>
           <span className="ml-auto border border-white/20 bg-white/10 px-2 py-1 text-xs font-black uppercase">
-            {editable ? 'edicao habilitada' : 'somente leitura'}
+            {editable ? 'edição habilitada' : 'somente leitura'}
           </span>
         </div>
       </section>
@@ -32,7 +32,7 @@ export default function SettingsIndex({ settings, editable, dryRun, autoAssign }
       <section className="panel">
         <div className="panel-header flex items-center gap-2">
           <Lock size={16} />
-          <h3 className="section-title">Parametros visiveis</h3>
+          <h3 className="section-title">Parâmetros visíveis</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">

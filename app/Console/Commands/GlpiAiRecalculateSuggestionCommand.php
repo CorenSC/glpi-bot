@@ -11,7 +11,7 @@ class GlpiAiRecalculateSuggestionCommand extends Command
 {
     protected $signature = 'glpi-ai:recalculate-suggestion {suggestion_id}';
 
-    protected $description = 'Envia o recalculo de uma sugestao existente para processamento.';
+    protected $description = 'Envia o recálculo de uma sugestão existente para processamento.';
 
     public function handle(): int
     {

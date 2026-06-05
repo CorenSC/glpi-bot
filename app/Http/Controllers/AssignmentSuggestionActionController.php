@@ -33,10 +33,10 @@ class AssignmentSuggestionActionController extends Controller
         if ($canAssign) {
             AssignGlpiTicketJob::dispatch($suggestion);
 
-            return back()->with('success', 'Sugestao aprovada e atribuicao enviada para o GLPI.');
+            return back()->with('success', 'Sugestão aprovada e atribuição enviada para o GLPI.');
         }
 
-        return back()->with('success', config('glpi-ai.dry_run') ? 'Sugestao aprovada em dry-run.' : 'Sugestao aprovada.');
+        return back()->with('success', config('glpi-ai.dry_run') ? 'Sugestão aprovada em dry-run.' : 'Sugestão aprovada.');
     }
 
     public function reject(HumanSuggestionActionRequest $request, GlpiAiAssignmentSuggestion $suggestion, HumanFeedbackService $feedback): RedirectResponse
@@ -44,7 +44,7 @@ class AssignmentSuggestionActionController extends Controller
         $this->authorize('approve', $suggestion);
         $feedback->record($suggestion, 'reject', SuggestionStatus::Rejected->value, $request);
 
-        return back()->with('success', 'Sugestao rejeitada.');
+        return back()->with('success', 'Sugestão rejeitada.');
     }
 
     public function assignTechnician(HumanSuggestionActionRequest $request, GlpiAiAssignmentSuggestion $suggestion, HumanFeedbackService $feedback): RedirectResponse
@@ -53,7 +53,7 @@ class AssignmentSuggestionActionController extends Controller
         $feedback->record($suggestion, 'assign_recommended_technician', SuggestionStatus::Accepted->value, $request);
         AssignGlpiTicketJob::dispatch($suggestion);
 
-        return back()->with('success', config('glpi-ai.dry_run') ? 'Simulacao registrada em dry-run.' : 'Atribuicao enviada para fila.');
+        return back()->with('success', config('glpi-ai.dry_run') ? 'Simulação registrada em dry-run.' : 'Atribuição enviada para fila.');
     }
 
     public function assignGroup(HumanSuggestionActionRequest $request, GlpiAiAssignmentSuggestion $suggestion, HumanFeedbackService $feedback): RedirectResponse
@@ -62,7 +62,7 @@ class AssignmentSuggestionActionController extends Controller
         $feedback->record($suggestion, 'assign_recommended_group', SuggestionStatus::Accepted->value, $request);
         AssignGlpiTicketJob::dispatch($suggestion);
 
-        return back()->with('success', config('glpi-ai.dry_run') ? 'Simulacao registrada em dry-run.' : 'Atribuicao enviada para fila.');
+        return back()->with('success', config('glpi-ai.dry_run') ? 'Simulação registrada em dry-run.' : 'Atribuição enviada para fila.');
     }
 
     public function manualTriage(HumanSuggestionActionRequest $request, GlpiAiAssignmentSuggestion $suggestion, HumanFeedbackService $feedback): RedirectResponse
@@ -70,7 +70,7 @@ class AssignmentSuggestionActionController extends Controller
         $this->authorize('approve', $suggestion);
         $feedback->record($suggestion, 'send_to_manual_triage', SuggestionStatus::ManualTriage->value, $request);
 
-        return back()->with('success', 'Sugestao enviada para triagem manual.');
+        return back()->with('success', 'Sugestão enviada para triagem manual.');
     }
 
     public function recalculate(GlpiAiAssignmentSuggestion $suggestion): RedirectResponse
@@ -90,6 +90,6 @@ class AssignmentSuggestionActionController extends Controller
             ->onConnection('database')
             ->onQueue((string) config('glpi-ai.queue_name', 'glpi-ai'));
 
-        return back()->with('success', 'Reanalise da IA enviada para a fila.');
+        return back()->with('success', 'Reanálise da IA enviada para a fila.');
     }
 }

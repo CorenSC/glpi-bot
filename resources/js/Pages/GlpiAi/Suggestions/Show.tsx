@@ -6,27 +6,57 @@ import { GlpiAiLayout } from '../../../Layouts/GlpiAiLayout';
 import type { Suggestion, TechnicianScore } from '../../../Types/glpi-ai';
 
 const canonicalLabels = [
+  'Título',
   'Titulo',
+  'Categoria detectada no título',
   'Categoria detectada no titulo',
   'Categoria informada',
+  'Descrição',
   'Descricao',
+  'Solução',
   'Solucao',
+  'Grupo atribuído',
   'Grupo atribuido',
+  'Técnico atribuído',
   'Tecnico atribuido',
+  'Técnico solucionador',
   'Tecnico solucionador',
+  'Histórico resumido',
   'Historico resumido',
 ];
 
 const feedbackReasons = [
   { value: '', label: 'Selecione um motivo' },
-  { value: 'recommendation_correct', label: 'Recomendacao correta' },
-  { value: 'better_technician', label: 'Outro tecnico conhece melhor' },
-  { value: 'wrong_technician', label: 'Tecnico errado' },
+  { value: 'recommendation_correct', label: 'Recomendação correta' },
+  { value: 'better_technician', label: 'Outro técnico conhece melhor' },
+  { value: 'wrong_technician', label: 'Técnico errado' },
   { value: 'bad_similar_tickets', label: 'Chamados similares ruins' },
-  { value: 'wrong_category', label: 'Categoria interpretada errado' },
+  { value: 'wrong_category', label: 'Categoria interpretada errada' },
   { value: 'weak_context', label: 'Contexto fraco' },
-  { value: 'not_dti_ticket', label: 'Nao era chamado para DTI' },
+  { value: 'not_dti_ticket', label: 'Não era chamado para DTI' },
 ];
+
+const feedbackReasonLabels = Object.fromEntries(feedbackReasons.map((reason) => [reason.value, reason.label])) as Record<string, string>;
+
+const feedbackActionLabels: Record<string, string> = {
+  approve: 'Aprovação da sugestão',
+  reject: 'Rejeição da sugestão',
+  assign_recommended_technician: 'Atribuição ao técnico recomendado',
+  assign_recommended_group: 'Atribuição ao grupo recomendado',
+  assign_other_technician: 'Escolha de outro técnico',
+  assign_other_group: 'Escolha de outro grupo',
+  send_to_manual_triage: 'Envio para triagem manual',
+  mark_incorrect: 'Marcação como incorreta',
+  recalculate: 'Recálculo solicitado',
+  ignore: 'Sugestão ignorada',
+};
+
+const aiValidationLabels: Record<string, string> = {
+  pending: 'Pendente',
+  running: 'Em execução',
+  completed: 'Concluída',
+  failed: 'Falhou',
+};
 
 function actionLabel(action: string) {
   if (action === 'assign_to_technician') return 'Sugerir técnico';
@@ -149,9 +179,9 @@ export default function SuggestionShow({ suggestion, dryRun, autoAssign, glpiWeb
   const similarTickets = run?.similar_tickets ?? [];
   const hasTechnician = Boolean(suggestion.recommended_technician_name || suggestion.recommended_technician_id);
   const hasGroup = Boolean(suggestion.recommended_group_name || suggestion.recommended_group_id);
-  const title = canonicalValue(run?.canonical_text, 'Titulo') || suggestion.title || '-';
-  const category = canonicalValue(run?.canonical_text, 'Categoria detectada no titulo') || suggestion.category_name || '-';
-  const description = canonicalSection(run?.canonical_text, 'Descricao');
+  const title = canonicalValue(run?.canonical_text, 'Título') || canonicalValue(run?.canonical_text, 'Titulo') || suggestion.title || '-';
+  const category = canonicalValue(run?.canonical_text, 'Categoria detectada no título') || canonicalValue(run?.canonical_text, 'Categoria detectada no titulo') || suggestion.category_name || '-';
+  const description = canonicalSection(run?.canonical_text, 'Descrição') || canonicalSection(run?.canonical_text, 'Descricao');
   const audit = auditSentences(suggestion);
   const gap = scoreGap(scores);
   const closeTechnicians = scores.slice(0, 4).filter((score, index) => index === 0 || Math.abs(Number(scores[0]?.final_score ?? 0) - Number(score.final_score ?? 0)) <= 5);
@@ -408,8 +438,8 @@ export default function SuggestionShow({ suggestion, dryRun, autoAssign, glpiWeb
 
             {suggestion.ai_validation_status ? (
               <div className="mt-4 border border-slate-200 bg-slate-50 p-3 text-xs font-semibold text-slate-600">
-                <p className="font-black uppercase tracking-wide text-slate-500">ValidaÃ§Ã£o da IA</p>
-                <p className="mt-1">Status: {suggestion.ai_validation_status}</p>
+                <p className="font-black uppercase tracking-wide text-slate-500">Validação da IA</p>
+                <p className="mt-1">Status: {aiValidationLabels[suggestion.ai_validation_status] ?? suggestion.ai_validation_status}</p>
                 {suggestion.ai_validation_attempts ? <p>Tentativas: {suggestion.ai_validation_attempts}</p> : null}
                 {suggestion.ai_validation_error ? <p className="mt-1 text-[#9f2f2f]">{suggestion.ai_validation_error}</p> : null}
               </div>
@@ -428,9 +458,9 @@ export default function SuggestionShow({ suggestion, dryRun, autoAssign, glpiWeb
               <div className="mt-4 space-y-3">
                 {suggestion.feedbacks?.map((feedback) => (
                   <div key={feedback.id} className="border border-slate-200 bg-slate-50 p-3 text-sm">
-                    <p className="font-black">{feedback.action}</p>
+                    <p className="font-black">{feedbackActionLabels[feedback.action] ?? feedback.action}</p>
                     <p className="mt-1 text-xs font-bold uppercase tracking-wide text-slate-500">
-                      Motivo: {feedback.reason_code || 'nao informado'} · peso: {typeof feedback.learning_weight === 'number' ? feedback.learning_weight.toFixed(2) : '-'}
+                      Motivo: {feedback.reason_code ? feedbackReasonLabels[feedback.reason_code] ?? feedback.reason_code : 'não informado'} · peso: {typeof feedback.learning_weight === 'number' ? feedback.learning_weight.toFixed(2) : '-'}
                     </p>
                     <p className="text-slate-600">{feedback.observation ?? 'Sem observação.'}</p>
                   </div>

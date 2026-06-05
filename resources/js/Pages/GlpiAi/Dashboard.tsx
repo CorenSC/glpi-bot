@@ -12,35 +12,41 @@ export default function Dashboard({ metrics, dryRun, autoAssign }: { metrics: Re
   const pending = Number(metrics.pending ?? 0);
   const failures = (metrics.recent_errors ?? []).length;
 
+  const operationalStatusLabels: Record<string, string> = {
+    running: 'Em execução',
+    completed: 'Concluída',
+    failed: 'Falhou',
+  };
+
   return (
     <GlpiAiLayout title="Dashboard operacional" dryRun={dryRun} autoAssign={autoAssign}>
       <Head title="Dashboard | GLPI BOT" />
 
       <section className="mb-5 grid gap-4 xl:grid-cols-[1fr_1fr_1fr]">
         <div className="border border-[#214064]/20 bg-[#214064] p-5 text-white shadow-sm">
-          <p className="text-[11px] font-black uppercase tracking-wide text-white/55">Estado do robo</p>
+          <p className="text-[11px] font-black uppercase tracking-wide text-white/55">Estado do robô</p>
           <div className="mt-3 flex items-center justify-between gap-4">
             <div>
               <p className="text-2xl font-black">{metrics.dry_run ? 'Simulação' : 'Execução real'}</p>
-              <p className="mt-1 text-sm text-white/60">{metrics.auto_assign ? 'Autoatribuicao habilitada' : 'Autoatribuicao inativa'}</p>
+              <p className="mt-1 text-sm text-white/60">{metrics.auto_assign ? 'Autoatribuição habilitada' : 'Autoatribuição inativa'}</p>
             </div>
             <Cpu size={34} className="text-blue-100" />
           </div>
         </div>
 
         <div className="panel p-5">
-          <p className="text-xs font-black uppercase tracking-wide text-slate-500">Fila de validacao</p>
+          <p className="text-xs font-black uppercase tracking-wide text-slate-500">Fila de validação</p>
           <div className="mt-3 flex items-center justify-between gap-4">
             <div>
               <p className="text-3xl font-black">{pending}</p>
-              <p className="mt-1 text-sm text-slate-500">sugestoes aguardando decisao humana</p>
+              <p className="mt-1 text-sm text-slate-500">sugestões aguardando decisão humana</p>
             </div>
             <Link href="/glpi-ai/suggestions?status=pending" className="btn btn-primary">Abrir fila</Link>
           </div>
         </div>
 
         <div className={`border p-5 shadow-sm ${failures > 0 ? 'border-red-200 bg-red-50' : 'border-slate-200 bg-white'}`}>
-          <p className="text-xs font-black uppercase tracking-wide text-slate-500">Saude recente</p>
+          <p className="text-xs font-black uppercase tracking-wide text-slate-500">Saúde recente</p>
           <div className="mt-3 flex items-center justify-between gap-4">
             <div>
               <p className="text-3xl font-black">{failures}</p>
@@ -57,13 +63,13 @@ export default function Dashboard({ metrics, dryRun, autoAssign }: { metrics: Re
         <MetricCard label="Triagem manual" value={metrics.manual_triage ?? 0} icon={<FileWarning size={18} />} />
         <MetricCard label="Confiança média" value={`${Number(metrics.average_confidence ?? 0).toFixed(1)}%`} icon={<Gauge size={18} />} />
         <MetricCard label="Rejeitadas" value={metrics.rejected ?? 0} />
-        <MetricCard label="Autoatribuidas" value={metrics.auto_assigned ?? 0} />
-        <MetricCard label="Ultimas 24h" value={metrics.last_24h ?? 0} icon={<Clock size={18} />} />
-        <MetricCard label="Ultimos 7 dias" value={metrics.last_7d ?? 0} />
+        <MetricCard label="Autoatribuídas" value={metrics.auto_assigned ?? 0} />
+        <MetricCard label="Últimas 24h" value={metrics.last_24h ?? 0} icon={<Clock size={18} />} />
+        <MetricCard label="Últimos 7 dias" value={metrics.last_7d ?? 0} />
         <MetricCard label="Jobs pendentes" value={metrics.queue_pending_jobs ?? 0} />
         <MetricCard label="Jobs falhados" value={metrics.queue_failed_jobs ?? 0} icon={<AlertTriangle size={18} />} />
-        <MetricCard label="Ultimo chamado" value={metrics.last_analyzed_ticket?.glpi_ticket_id ? `#${metrics.last_analyzed_ticket.glpi_ticket_id}` : '-'} />
-        <MetricCard label="Ultimo erro IA" value={metrics.last_ai_error ? `#${metrics.last_ai_error.glpi_ticket_id}` : '-'} />
+        <MetricCard label="Último chamado" value={metrics.last_analyzed_ticket?.glpi_ticket_id ? `#${metrics.last_analyzed_ticket.glpi_ticket_id}` : '-'} />
+        <MetricCard label="Último erro IA" value={metrics.last_ai_error ? `#${metrics.last_ai_error.glpi_ticket_id}` : '-'} />
       </section>
 
       <section className="panel mt-5 p-5">
@@ -87,7 +93,7 @@ export default function Dashboard({ metrics, dryRun, autoAssign }: { metrics: Re
       <section className="mt-5 grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
         <div className="panel p-5">
           <div className="flex items-center justify-between">
-            <h2 className="font-black">Volume de analises</h2>
+            <h2 className="font-black">Volume de análises</h2>
             <span className="text-xs font-black uppercase tracking-wide text-slate-500">operacional</span>
           </div>
           <div className="mt-4 h-64">
@@ -105,7 +111,7 @@ export default function Dashboard({ metrics, dryRun, autoAssign }: { metrics: Re
 
         <div className="panel p-5">
           <div className="flex items-center justify-between">
-            <h2 className="font-black">Ocorrencias recentes</h2>
+            <h2 className="font-black">Ocorrências recentes</h2>
             <Link href="/glpi-ai/audit" className="link-action text-sm">Ver auditoria</Link>
           </div>
           <div className="mt-4 divide-y divide-slate-200 rounded-lg border border-slate-200">
@@ -122,7 +128,7 @@ export default function Dashboard({ metrics, dryRun, autoAssign }: { metrics: Re
 
       <section className="panel mt-5 p-5">
         <div className="flex items-center justify-between">
-          <h2 className="font-black">Execucoes operacionais</h2>
+          <h2 className="font-black">Execuções operacionais</h2>
           <span className="text-xs font-black uppercase tracking-wide text-slate-500">scheduler e comandos</span>
         </div>
         <div className="mt-4 overflow-x-auto">
@@ -131,7 +137,7 @@ export default function Dashboard({ metrics, dryRun, autoAssign }: { metrics: Re
               <tr>
                 <th className="p-3">Comando</th>
                 <th className="p-3">Status</th>
-                <th className="p-3">Duracao</th>
+                <th className="p-3">Duração</th>
                 <th className="p-3">Resumo</th>
               </tr>
             </thead>
@@ -139,14 +145,14 @@ export default function Dashboard({ metrics, dryRun, autoAssign }: { metrics: Re
               {(metrics.last_operational_runs ?? []).map((run: any) => (
                 <tr key={run.id} className="border-b border-slate-200">
                   <td className="p-3 font-black text-slate-950">{run.command}</td>
-                  <td className="p-3 font-bold">{run.status}</td>
+                  <td className="p-3 font-bold">{operationalStatusLabels[String(run.status ?? '').toLowerCase()] ?? run.status ?? '-'}</td>
                   <td className="p-3">{run.duration_ms ? `${(Number(run.duration_ms) / 1000).toFixed(1)}s` : '-'}</td>
                   <td className="p-3 text-slate-600">{run.error_message || run.summary || '-'}</td>
                 </tr>
               ))}
               {(metrics.last_operational_runs ?? []).length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="p-4 text-sm font-semibold text-slate-500">Nenhuma execucao operacional registrada ainda.</td>
+                  <td colSpan={4} className="p-4 text-sm font-semibold text-slate-500">Nenhuma execução operacional registrada ainda.</td>
                 </tr>
               ) : null}
             </tbody>

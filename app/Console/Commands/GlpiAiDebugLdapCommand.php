@@ -11,7 +11,7 @@ class GlpiAiDebugLdapCommand extends Command
 {
     protected $signature = 'glpi-ai:debug-ldap {login?}';
 
-    protected $description = 'Testa a autenticacao LDAP do painel GLPI AI sem expor a senha.';
+    protected $description = 'Testa a autenticação LDAP do painel GLPI AI sem expor a senha.';
 
     public function handle(LdapAuthService $ldap): int
     {
@@ -31,7 +31,7 @@ class GlpiAiDebugLdapCommand extends Command
             return self::FAILURE;
         }
 
-        $this->info('LDAP autenticou e o usuario local foi salvo.');
+        $this->info('LDAP autenticou e o usuário local foi salvo.');
         $this->table(['Campo', 'Valor'], [
             ['ID local', (string) $result['user']->id],
             ['Nome', (string) $result['user']->name],

@@ -27,6 +27,6 @@ class ManualAnalysisController extends Controller
         $this->authorize('runManualGlpiAiAnalysis');
         $suggestion = $orchestrator->analyzeTicketId($request->integer('glpi_ticket_id'), true);
 
-        return redirect()->route('glpi-ai.suggestions.show', $suggestion)->with('success', 'Analise dry-run concluida.');
+        return redirect()->route('glpi-ai.suggestions.show', $suggestion)->with('success', 'Análise dry-run concluída.');
     }
 }

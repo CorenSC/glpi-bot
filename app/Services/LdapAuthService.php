@@ -18,7 +18,7 @@ final class LdapAuthService
     public function authenticate(string $username, string $password): array
     {
         if (! class_exists(\Symfony\Component\Ldap\Ldap::class)) {
-            throw new RuntimeException('Pacote symfony/ldap nao instalado. Rode composer install com PHP 8.3+.');
+            throw new RuntimeException('Pacote symfony/ldap não instalado. Rode composer install com PHP 8.3+.');
         }
 
         $encryption = (string) config('ldap.encryption', 'none');
@@ -42,7 +42,7 @@ final class LdapAuthService
         $entry = $results[0] ?? null;
 
         if (! $entry) {
-            throw new RuntimeException('Usuario ou senha invalidos.');
+            throw new RuntimeException('Usuário ou senha inválidos.');
         }
 
         $dn = $entry->getDn();
@@ -52,7 +52,7 @@ final class LdapAuthService
         $required = (string) config('ldap.required_description_contains', 'DTI');
 
         if ($required !== '' && stripos((string) $description, $required) === false) {
-            throw new RuntimeException('Acesso restrito a usuarios com description contendo '.$required.'.');
+            throw new RuntimeException('Acesso restrito a usuários com description contendo '.$required.'.');
         }
 
         $ldap->bind($dn, $password);

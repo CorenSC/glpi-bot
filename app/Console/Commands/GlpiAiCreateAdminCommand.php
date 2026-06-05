@@ -12,7 +12,7 @@ class GlpiAiCreateAdminCommand extends Command
 {
     protected $signature = 'glpi-ai:create-admin {email} {--name=Administrador} {--password=}';
 
-    protected $description = 'Cria ou atualiza um usuario administrador para o painel GLPI AI.';
+    protected $description = 'Cria ou atualiza um usuário administrador para o painel GLPI AI.';
 
     public function handle(): int
     {
@@ -34,7 +34,7 @@ class GlpiAiCreateAdminCommand extends Command
             ],
         );
 
-        $this->info("Usuario administrador pronto: {$user->email}");
+        $this->info("Usuário administrador pronto: {$user->email}");
 
         return self::SUCCESS;
     }

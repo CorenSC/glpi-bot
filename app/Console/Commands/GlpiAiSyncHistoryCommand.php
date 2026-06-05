@@ -15,11 +15,11 @@ use Illuminate\Console\Command;
 class GlpiAiSyncHistoryCommand extends Command
 {
     protected $signature = 'glpi-ai:sync-history
-        {--limit=2500 : Quantidade maxima de chamados a verificar nesta execucao}
+        {--limit=2500 : Quantidade máxima de chamados a verificar nesta execução}
         {--batch=200 : Tamanho da pagina da API do GLPI}
         {--start= : Offset inicial manual na lista do GLPI}
         {--fresh : Recomeça a varredura do offset zero}
-        {--refresh-existing : Reimporta chamados ja existentes na base interna}';
+        {--refresh-existing : Reimporta chamados já existentes na base interna}';
 
     protected $description = 'Importa chamados solucionados/fechados do GLPI para a base interna da IA.';
 
@@ -44,7 +44,7 @@ class GlpiAiSyncHistoryCommand extends Command
         $scanned = 0;
         $skippedExisting = 0;
 
-        $this->line("Iniciando varredura no offset {$start}. ".($skipExisting ? 'Chamados ja importados serao pulados.' : 'Chamados existentes serao reimportados.'));
+        $this->line("Iniciando varredura no offset {$start}. ".($skipExisting ? 'Chamados já importados serão pulados.' : 'Chamados existentes serão reimportados.'));
 
         for ($offset = $start; $offset < $start + $limit; $offset += $batch) {
             $pageSize = min($batch, ($start + $limit) - $offset);
@@ -56,7 +56,7 @@ class GlpiAiSyncHistoryCommand extends Command
 
             $totalLabel = $page['total'] === null ? '?' : (string) $page['total'];
             $historicalCount = (int) ($page['historical_count'] ?? $items->count());
-            $this->line("Faixa GLPI verificada {$offset}-".($offset + $pageSize - 1)." de {$totalLabel}; {$historicalCount} solucionados/fechados; {$items->count()} para importar; {$page['skipped_existing']} ja existiam.");
+            $this->line("Faixa GLPI verificada {$offset}-".($offset + $pageSize - 1)." de {$totalLabel}; {$historicalCount} solucionados/fechados; {$items->count()} para importar; {$page['skipped_existing']} já existiam.");
             $items->each(fn (array $ticket) => SyncGlpiTicketHistoryJob::dispatch($ticket));
 
             $this->saveNextOffset($offset + $pageSize);
@@ -67,9 +67,9 @@ class GlpiAiSyncHistoryCommand extends Command
             }
         }
 
-        $this->info("Importacao enviada: {$dispatched} chamados historicos; {$skippedExisting} ja estavam importados; {$scanned} registros GLPI verificados.");
+        $this->info("Importação enviada: {$dispatched} chamados históricos; {$skippedExisting} já estavam importados; {$scanned} registros GLPI verificados.");
         $run->update([
-            'summary' => "Importacao enviada: {$dispatched} historicos; {$skippedExisting} ja importados; {$scanned} registros verificados.",
+            'summary' => "Importação enviada: {$dispatched} históricos; {$skippedExisting} já importados; {$scanned} registros verificados.",
             'metadata' => array_merge($run->metadata ?? [], [
                 'dispatched' => $dispatched,
                 'skipped_existing' => $skippedExisting,
@@ -110,7 +110,7 @@ class GlpiAiSyncHistoryCommand extends Command
             [
                 'value' => ['offset' => $offset],
                 'type' => 'integer',
-                'description' => 'Proximo offset da varredura incremental de historico via API GLPI.',
+                'description' => 'Próximo offset da varredura incremental de histórico via API GLPI.',
                 'is_sensitive' => false,
             ],
         );

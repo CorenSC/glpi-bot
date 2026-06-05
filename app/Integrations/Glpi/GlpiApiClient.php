@@ -30,7 +30,7 @@ final class GlpiApiClient
                 ->get('/'.trim($itemType, '/'), $query);
 
             if ($response->failed()) {
-                throw new RuntimeException("GLPI API failed while listing {$itemType}: HTTP ".$response->status());
+                throw new RuntimeException("Falha na API do GLPI ao listar {$itemType}: HTTP ".$response->status());
             }
 
             $data = $response->json();
@@ -50,7 +50,7 @@ final class GlpiApiClient
                 ->get('/'.trim($itemType, '/'), $query);
 
             if ($response->failed()) {
-                throw new RuntimeException("GLPI API failed while listing {$itemType}: HTTP ".$response->status());
+                throw new RuntimeException("Falha na API do GLPI ao listar {$itemType}: HTTP ".$response->status());
             }
 
             $data = $response->json();
@@ -77,7 +77,7 @@ final class GlpiApiClient
             }
 
             if ($response->failed()) {
-                throw new RuntimeException("GLPI API failed while reading {$itemType}#{$id}: HTTP ".$response->status());
+                throw new RuntimeException("Falha na API do GLPI ao ler {$itemType}#{$id}: HTTP ".$response->status());
             }
 
             $data = $response->json();
@@ -104,7 +104,7 @@ final class GlpiApiClient
             }
 
             if ($response->failed()) {
-                throw new RuntimeException("GLPI API failed while reading {$itemType}#{$id}/{$subItemType}: HTTP ".$response->status());
+                throw new RuntimeException("Falha na API do GLPI ao ler {$itemType}#{$id}/{$subItemType}: HTTP ".$response->status());
             }
 
             $data = $response->json();
@@ -136,7 +136,7 @@ final class GlpiApiClient
     private function safeWrite(callable $callback): array
     {
         if ((bool) config('glpi-ai.dry_run', true) || ! (bool) config('glpi-ai.auto_assign', false)) {
-            return ['dry_run' => true, 'skipped' => true, 'reason' => 'Dry-run ativo ou autoatribuicao desativada.'];
+            return ['dry_run' => true, 'skipped' => true, 'reason' => 'Dry-run ativo ou autoatribuição desativada.'];
         }
 
         return $this->withSession($callback);
@@ -180,7 +180,7 @@ final class GlpiApiClient
             ->get('/initSession');
 
         if ($response->failed() || ! $response->json('session_token')) {
-            throw new RuntimeException('GLPI API authentication failed.');
+            throw new RuntimeException('Falha na autenticação da API do GLPI.');
         }
 
         $this->sessionToken = (string) $response->json('session_token');
@@ -199,7 +199,7 @@ final class GlpiApiClient
             ]);
 
         if ($response->failed()) {
-            throw new RuntimeException('GLPI API failed while changing active entity: HTTP '.$response->status());
+            throw new RuntimeException('Falha na API do GLPI ao alterar a entidade ativa: HTTP '.$response->status());
         }
     }
 

@@ -13,10 +13,10 @@ use Illuminate\Console\Command;
 class GlpiAiGenerateEmbeddingsCommand extends Command
 {
     protected $signature = 'glpi-ai:generate-embeddings
-        {--limit=100 : Quantidade maxima de embeddings nesta execucao}
-        {--all : Envia todos os embeddings pendentes nesta execucao}';
+        {--limit=100 : Quantidade máxima de embeddings nesta execução}
+        {--all : Envia todos os embeddings pendentes nesta execução}';
 
-    protected $description = 'Gera embeddings pendentes para chamados historicos importados do GLPI.';
+    protected $description = 'Gera embeddings pendentes para chamados históricos importados do GLPI.';
 
     public function handle(OperationalRunService $runs): int
     {

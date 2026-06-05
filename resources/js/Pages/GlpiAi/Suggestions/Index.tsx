@@ -34,11 +34,11 @@ const actionLabels: Record<string, string> = {
 const suggestionViews: Array<{ key: SuggestionView; label: string; helper: string }> = [
   { key: 'pending', label: 'Pendentes', helper: 'fila de trabalho' },
   { key: 'accepted', label: 'Aprovadas', helper: 'validadas' },
-  { key: 'manual_triage', label: 'Triagem manual', helper: 'sem atribuicao segura' },
+  { key: 'manual_triage', label: 'Triagem manual', helper: 'sem atribuição segura' },
   { key: 'rejected', label: 'Rejeitadas', helper: 'descartadas' },
   { key: 'glpi_closed', label: 'Finalizadas', helper: 'fechadas no GLPI' },
   { key: 'failed', label: 'Falhas', helper: 'exigem revisao' },
-  { key: 'all', label: 'Todas', helper: 'historico completo' },
+  { key: 'all', label: 'Todas', helper: 'histórico completo' },
 ];
 
 const decisionMeta: Record<string, { icon: typeof UserCheck; tone: string; title: string }> = {

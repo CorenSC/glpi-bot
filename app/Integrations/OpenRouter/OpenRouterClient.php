@@ -20,7 +20,7 @@ final class OpenRouterClient
         ]);
 
         if ($response->failed()) {
-            throw new RuntimeException('OpenRouter chat failed with HTTP '.$response->status());
+            throw new RuntimeException('Falha no chat do OpenRouter: HTTP '.$response->status());
         }
 
         return $response->json();
@@ -34,7 +34,7 @@ final class OpenRouterClient
         ]);
 
         if ($response->failed()) {
-            throw new RuntimeException('OpenRouter embeddings failed with HTTP '.$response->status());
+            throw new RuntimeException('Falha ao gerar embeddings no OpenRouter: HTTP '.$response->status());
         }
 
         return $response->json('data.0.embedding') ?? [];

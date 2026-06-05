@@ -11,8 +11,8 @@ export default function ManualAnalysis({ dryRun, autoAssign }: { dryRun: boolean
 
       <section className="panel max-w-3xl">
         <div className="panel-header">
-          <h2 className="section-title">Executar analise por ID</h2>
-          <p className="mt-1 text-sm text-[var(--glpi-muted)]">Use para testar um chamado especifico antes de automatizar a rotina.</p>
+          <h2 className="section-title">Executar análise por ID</h2>
+          <p className="mt-1 text-sm text-[var(--glpi-muted)]">Use para testar um chamado específico antes de automatizar a rotina.</p>
         </div>
 
         <form className="p-4" onSubmit={(event) => { event.preventDefault(); form.post('/glpi-ai/manual-analysis'); }}>

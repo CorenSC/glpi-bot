@@ -55,7 +55,7 @@ class GlpiAiSyncSuggestionStatusesCommand extends Command
                 'action' => 'glpi_ticket_closed',
                 'previous_status' => $previous,
                 'new_status' => SuggestionStatus::GlpiClosed->value,
-                'observation' => 'Chamado marcado como solucionado/fechado no GLPI; sugestao finalizada automaticamente no painel.',
+                'observation' => 'Chamado marcado como solucionado/fechado no GLPI; sugestão finalizada automaticamente no painel.',
                 'metadata' => ['glpi_status' => $ticket['status'] ?? null],
             ]);
 

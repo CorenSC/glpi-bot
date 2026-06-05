@@ -68,7 +68,7 @@ class AuthController extends Controller
                 ]);
 
                 return back()->withErrors([
-                    'login' => 'Nao foi possivel autenticar no LDAP. Confira usuario, senha e permissao de acesso ao DTI.',
+                    'login' => 'Não foi possível autenticar no LDAP. Confira usuário, senha e permissão de acesso ao DTI.',
                 ])->onlyInput('login');
             }
         }

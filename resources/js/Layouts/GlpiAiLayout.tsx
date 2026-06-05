@@ -86,7 +86,7 @@ export function GlpiAiLayout({ children, dryRun = true, autoAssign = false, titl
               {autoAssign && !dryRun ? (
                 <span className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-black text-red-900">
                   <AlertTriangle size={16} />
-                  Autoatribuicao real
+                  Autoatribuição real
                 </span>
               ) : null}
               <DryRunBanner dryRun={dryRun} />

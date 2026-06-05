@@ -146,7 +146,7 @@ final class TechnicianRankingService
                 'human_feedback_negative' => (int) $feedback['negative'],
                 'human_feedback_total' => (int) $feedback['total'],
                 'human_feedback_adjustment' => round($feedbackAdjustment, 2),
-                'ranking_note' => 'Historico combina papel de solucionador, quantidade de chamados similares, presenca entre os melhores resultados, dominio historico da categoria, contexto da solicitacao e feedback humano auditavel.',
+                'ranking_note' => 'Histórico combina papel de solucionador, quantidade de chamados similares, presença entre os melhores resultados, domínio histórico da categoria, contexto da solicitação e feedback humano auditável.',
             ];
 
             $baseFinalScore = 100 * (
@@ -160,12 +160,12 @@ final class TechnicianRankingService
 
             if (! $score['is_active']) {
                 $score['is_blocked'] = true;
-                $score['blocked_reason'] = 'Tecnico inativo no GLPI.';
+                $score['blocked_reason'] = 'Técnico inativo no GLPI.';
                 $score['final_score'] = 0;
             }
 
             if ($score['is_blocked']) {
-                $score['blocked_reason'] ??= 'Tecnico bloqueado para autoatribuicao.';
+                $score['blocked_reason'] ??= 'Técnico bloqueado para autoatribuição.';
                 $score['final_score'] = 0;
             }
 
@@ -184,7 +184,7 @@ final class TechnicianRankingService
         $minimum = (int) config('glpi-ai.minimum_similar_tickets', 3);
         $minimumContext = (float) config('glpi-ai.minimum_context_score_for_technician', 0.35);
         $action = RecommendedAction::ManualTriage->value;
-        $explanation = 'Dados insuficientes para recomendacao automatica.';
+        $explanation = 'Dados insuficientes para recomendação automática.';
         $warnings = [];
         $allowGroupRecommendation = (bool) config('glpi-ai.allow_group_recommendation', false);
         $technicianThreshold = (int) config('glpi-ai.confidence_threshold_technician', 60);
@@ -193,23 +193,23 @@ final class TechnicianRankingService
         if ($sensitiveWords !== []) {
             $explanation = 'Termos sensiveis encontrados exigem triagem manual.';
         } elseif ($ranked->isEmpty()) {
-            $explanation = 'Nenhum tecnico historico valido foi encontrado nos chamados similares.';
+            $explanation = 'Nenhum técnico histórico válido foi encontrado nos chamados similares.';
         } elseif ($similarTickets->count() < $minimum) {
             $explanation = 'Poucos chamados similares encontrados.';
         } elseif ($topContextScore > 0 && $topContextScore < $minimumContext) {
             $warnings[] = 'Os chamados similares encontrados batem em termos genericos, mas o contexto especifico esta fraco.';
-            $explanation = 'Contexto dos chamados similares insuficiente para recomendar tecnico com seguranca.';
+            $explanation = 'Contexto dos chamados similares insuficiente para recomendar técnico com segurança.';
         } elseif ($confidence >= $technicianThreshold || (! $allowGroupRecommendation && $confidence >= $groupThreshold)) {
             $action = RecommendedAction::AssignToTechnician->value;
-            $explanation = 'Historico e similaridade sustentam recomendacao do tecnico mais bem ranqueado.';
+            $explanation = 'Histórico e similaridade sustentam recomendação do técnico mais bem ranqueado.';
 
             if ($gap < (float) config('glpi-ai.minimum_gap_between_candidates', 3)) {
-                $warnings[] = 'Diferenca pequena entre os melhores tecnicos; validar manualmente antes de atribuir.';
-                $explanation = 'Tecnico sugerido para validacao humana; diferenca pequena entre candidatos indica confianca moderada.';
+                $warnings[] = 'Diferença pequena entre os melhores técnicos; validar manualmente antes de atribuir.';
+                $explanation = 'Técnico sugerido para validação humana; diferença pequena entre candidatos indica confiança moderada.';
             }
         } elseif ($allowGroupRecommendation && $confidence >= $groupThreshold) {
             $action = RecommendedAction::AssignToGroup->value;
-            $explanation = 'Confianca intermediaria; sugerir grupo em vez de tecnico.';
+            $explanation = 'Confiança intermediária; sugerir grupo em vez de técnico.';
         }
 
         return [

@@ -31,15 +31,15 @@ final class GlpiTicketNormalizer
         $category = $this->clean($ticket['category_path'] ?? $ticket['category_name'] ?? $ticket['title_category'] ?? $titleCategory ?? '');
 
         $lines = [
-            'Titulo: '.$title,
-            'Categoria detectada no titulo: '.$this->clean($titleCategory ?? ''),
+            'Título: '.$title,
+            'Categoria detectada no título: '.$this->clean($titleCategory ?? ''),
             'Categoria informada: '.$category,
-            'Descricao: '.$this->clean($ticket['content'] ?? $ticket['original_content'] ?? ''),
-            'Solucao: '.$this->clean($ticket['solution_text'] ?? ''),
-            'Grupo atribuido: '.$this->clean($ticket['assigned_group_name'] ?? ''),
-            'Tecnico atribuido: '.$this->clean($ticket['assigned_technician_name'] ?? ''),
-            'Tecnico solucionador: '.$this->clean($ticket['solver_technician_name'] ?? ''),
-            'Historico resumido: '.$this->clean($ticket['followup_summary'] ?? ''),
+            'Descrição: '.$this->clean($ticket['content'] ?? $ticket['original_content'] ?? ''),
+            'Solução: '.$this->clean($ticket['solution_text'] ?? ''),
+            'Grupo atribuído: '.$this->clean($ticket['assigned_group_name'] ?? ''),
+            'Técnico atribuído: '.$this->clean($ticket['assigned_technician_name'] ?? ''),
+            'Técnico solucionador: '.$this->clean($ticket['solver_technician_name'] ?? ''),
+            'Histórico resumido: '.$this->clean($ticket['followup_summary'] ?? ''),
         ];
 
         return $this->limit(implode("\n", $lines), (int) config('glpi-ai.text_limit', 12000));

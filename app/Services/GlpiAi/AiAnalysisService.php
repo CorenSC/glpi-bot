@@ -92,14 +92,14 @@ final class AiAnalysisService
     private function normalizePortugueseReason(string $text): string
     {
         $replacements = [
-            'Technician ' => 'O tecnico ',
+            'Technician ' => 'O técnico ',
             ' has the highest final score ' => ' tem o maior score final ',
-            ' based on text similarity, history, recency and workload' => ' com base em similaridade textual, historico, recencia e carga de trabalho',
+            ' based on text similarity, history, recency and workload' => ' com base em similaridade textual, histórico, recência e carga de trabalho',
             ' within the ' => ' dentro do grupo ',
             ' group' => '',
-            'Small score gap' => 'Pequena diferenca de pontuacao',
-            'between top technicians' => 'entre os principais tecnicos',
-            'consider manual verification before assignment' => 'considere validacao manual antes da atribuicao',
+            'Small score gap' => 'Pequena diferença de pontuação',
+            'between top technicians' => 'entre os principais técnicos',
+            'consider manual verification before assignment' => 'considere validação manual antes da atribuição',
         ];
 
         return str_replace(array_keys($replacements), array_values($replacements), $text);
@@ -108,20 +108,20 @@ final class AiAnalysisService
     private function systemPrompt(): string
     {
         return <<<'PROMPT'
-Voce e um assistente tecnico de triagem de chamados ITSM.
-Sua tarefa e validar e explicar uma recomendacao gerada por um sistema algoritmico.
-Responda sempre em portugues do Brasil.
-Voce NAO deve responder ao usuario final.
-Voce NAO pode inventar tecnicos, grupos ou IDs.
-Voce so pode recomendar tecnicos ou grupos presentes no ranking fornecido.
-Considere evidencia forte quando um tecnico concentra muitos chamados similares, aparece entre os primeiros similares e possui weighted_evidence_score alto.
-Nao valide como melhor escolha um tecnico com pouca evidencia quando outro candidato domina a maioria dos chamados similares usados como referencia.
+Você é um assistente técnico de triagem de chamados ITSM.
+Sua tarefa é validar e explicar uma recomendação gerada por um sistema algorítmico.
+Responda sempre em português do Brasil.
+Você NÃO deve responder ao usuário final.
+Você NÃO pode inventar técnicos, grupos ou IDs.
+Você só pode recomendar técnicos ou grupos presentes no ranking fornecido.
+Considere evidência forte quando um técnico concentra muitos chamados similares, aparece entre os primeiros similares e possui weighted_evidence_score alto.
+Não valide como melhor escolha um técnico com pouca evidência quando outro candidato domina a maioria dos chamados similares usados como referência.
 Se o ranking for fraco, houver risco alto real, categoria bloqueada ou dados insuficientes, recomende manual_triage.
-Palavras como acesso, permissao ou senha podem indicar atencao, mas nao devem bloquear recomendacao de tecnico quando o ranking historico estiver consistente.
-Retorne exclusivamente JSON valido:
+Palavras como acesso, permissão ou senha podem indicar atenção, mas não devem bloquear recomendação de técnico quando o ranking histórico estiver consistente.
+Retorne exclusivamente JSON válido:
 {"category_interpretation":"string","risk_level":"low|medium|high","recommended_action":"assign_to_technician|assign_to_group|manual_triage","recommended_technician_id":number|null,"recommended_group_id":number|null,"confidence":number,"reason":"string","warnings":["string"]}
-Os campos reason e warnings devem estar em portugues do Brasil.
-Nao inclua markdown. Nao inclua comentarios fora do JSON.
+Os campos reason e warnings devem estar em português do Brasil.
+Não inclua markdown. Não inclua comentários fora do JSON.
 PROMPT;
     }
 }

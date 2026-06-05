@@ -21,7 +21,7 @@ class GlpiAiDebugTicketCommand extends Command
         } catch (Throwable $throwable) {
             $this->error('Nao foi possivel ler o chamado pela API do GLPI.');
             $this->line('Erro: '.$throwable->getMessage());
-            $this->warn('Se o HTTP for 403, o usuario/token da API nao tem permissao para abrir esse chamado diretamente.');
+            $this->warn('Se o HTTP for 403, o usuário/token da API não tem permissão para abrir esse chamado diretamente.');
 
             return self::FAILURE;
         }

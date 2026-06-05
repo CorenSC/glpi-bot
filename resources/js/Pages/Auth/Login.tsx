@@ -19,22 +19,22 @@ export default function Login() {
               <Bot size={24} />
             </div>
             <div>
-              <p className="text-sm font-black uppercase tracking-[0.18em] text-white/70">GLPI AI</p>
+              <p className="text-sm font-black uppercase tracking-[0.18em] text-white/70">GLPI BOT</p>
               <h1 className="text-2xl font-black">Triagem inteligente DTI</h1>
             </div>
           </div>
 
           <div className="mt-16 max-w-lg">
-            <p className="text-4xl font-black leading-tight">Painel restrito para analise e auditoria de chamados.</p>
-            <p className="mt-5 text-base leading-7 text-white/70">
-              Acesso via credenciais corporativas. Apenas usuarios com description contendo DTI no LDAP podem entrar.
-            </p>
+              <p className="text-4xl font-black leading-tight">Painel restrito para análise e auditoria de chamados.</p>
+              <p className="mt-5 text-base leading-7 text-white/70">
+                Acesso via credenciais corporativas. Apenas usuários com description contendo DTI no LDAP podem entrar.
+              </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2 text-sm font-semibold text-white/70">
           <ShieldCheck size={18} />
-          Sem resposta automatica ao usuario final. Dry-run por padrao.
+          Sem resposta automática ao usuário final. Dry-run por padrão.
         </div>
       </section>
 
@@ -47,9 +47,9 @@ export default function Login() {
           }}
         >
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">Autenticacao</p>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">Autenticação</p>
             <h2 className="mt-1 text-2xl font-black text-slate-950">Entrar no painel</h2>
-            <p className="mt-2 text-sm text-slate-500">Use seu usuario de rede. O acesso e liberado apenas para DTI.</p>
+            <p className="mt-2 text-sm text-slate-500">Use seu usuário de rede. O acesso é liberado apenas para DTI.</p>
           </div>
 
           {mainError ? (
@@ -61,7 +61,7 @@ export default function Login() {
 
           <div className="mt-6 space-y-4">
             <label className="block">
-              <span className="mb-1.5 block text-sm font-bold text-slate-700">Usuario ou e-mail</span>
+              <span className="mb-1.5 block text-sm font-bold text-slate-700">Usuário ou e-mail</span>
               <input
                 value={form.data.login}
                 onChange={(event) => form.setData('login', event.target.value)}
