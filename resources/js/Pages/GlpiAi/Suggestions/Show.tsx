@@ -173,6 +173,87 @@ function EvidenceBlock({ title, count, defaultOpen, children }: { title: string;
   );
 }
 
+function SkeletonBlock({ className = '' }: { className?: string }) {
+  return <div className={`animate-pulse bg-slate-200/80 ${className}`} />;
+}
+
+function RecalculationSkeleton() {
+  return (
+    <div className="space-y-5" aria-busy="true" aria-live="polite">
+      <section className="panel overflow-hidden">
+        <div className="bg-[#214064] p-5">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="w-full max-w-3xl space-y-3">
+              <SkeletonBlock className="h-3 w-40 bg-white/25" />
+              <SkeletonBlock className="h-9 w-72 bg-white/35" />
+              <SkeletonBlock className="h-4 w-full max-w-xl bg-white/25" />
+            </div>
+            <div className="flex gap-2">
+              <SkeletonBlock className="h-8 w-24 bg-white/30" />
+              <SkeletonBlock className="h-8 w-20 bg-white/30" />
+              <SkeletonBlock className="h-8 w-20 bg-white/30" />
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-3 p-4 md:grid-cols-3">
+          <SkeletonBlock className="h-32" />
+          <SkeletonBlock className="h-32" />
+          <SkeletonBlock className="h-32" />
+        </div>
+
+        <div className="grid gap-3 border-t border-slate-200 p-4 sm:grid-cols-2 xl:grid-cols-4">
+          <SkeletonBlock className="h-16" />
+          <SkeletonBlock className="h-16" />
+          <SkeletonBlock className="h-16" />
+          <SkeletonBlock className="h-16" />
+        </div>
+      </section>
+
+      <section className="grid gap-5 2xl:grid-cols-[0.95fr_1.05fr]">
+        <div className="panel p-5">
+          <SkeletonBlock className="h-5 w-44" />
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            <SkeletonBlock className="h-16" />
+            <SkeletonBlock className="h-16" />
+            <SkeletonBlock className="h-16" />
+          </div>
+          <div className="mt-5 space-y-2">
+            <SkeletonBlock className="h-4 w-20" />
+            <SkeletonBlock className="h-5 w-11/12" />
+            <SkeletonBlock className="h-5 w-4/5" />
+          </div>
+          <SkeletonBlock className="mt-5 h-44" />
+        </div>
+
+        <div className="panel p-5">
+          <SkeletonBlock className="h-5 w-56" />
+          <div className="mt-4 space-y-3">
+            <SkeletonBlock className="h-12" />
+            <SkeletonBlock className="h-12" />
+            <SkeletonBlock className="h-12" />
+            <SkeletonBlock className="h-12" />
+          </div>
+        </div>
+      </section>
+
+      <section className="panel p-4">
+        <SkeletonBlock className="h-5 w-48" />
+        <div className="mt-4 space-y-2">
+          <SkeletonBlock className="h-10" />
+          <SkeletonBlock className="h-10" />
+          <SkeletonBlock className="h-10" />
+          <SkeletonBlock className="h-10" />
+        </div>
+      </section>
+
+      <p className="text-sm font-semibold text-slate-500">
+        Recalculando a recomendação. A tela será atualizada automaticamente.
+      </p>
+    </div>
+  );
+}
+
 export default function SuggestionShow({ suggestion, dryRun, autoAssign, glpiWebBaseUrl }: { suggestion: Suggestion; dryRun: boolean; autoAssign: boolean; glpiWebBaseUrl: string }) {
   const form = useForm({ observation: '', reason_code: '' });
   const [processingAction, setProcessingAction] = useState<string | null>(null);
@@ -253,25 +334,8 @@ export default function SuggestionShow({ suggestion, dryRun, autoAssign, glpiWeb
 
       <section className="grid gap-5 xl:grid-cols-[1fr_360px]">
         <div className="space-y-5">
-          {recalculationPending ? (
-            <section className="panel border-[#214064]/30 bg-[#eef4fb] p-5">
-              <div className="flex flex-wrap items-center gap-3">
-                <RotateCcw className="animate-spin text-[#214064]" size={20} />
-                <div>
-                  <p className="font-black text-[#0e2a49]">Recálculo em andamento</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-600">
-                    O ranking está na fila. Quando o worker terminar, esta tela será atualizada com a nova recomendação.
-                  </p>
-                </div>
-              </div>
-              <div className="mt-4 grid gap-3 md:grid-cols-3">
-                <div className="h-20 animate-pulse bg-white/80" />
-                <div className="h-20 animate-pulse bg-white/80" />
-                <div className="h-20 animate-pulse bg-white/80" />
-              </div>
-            </section>
-          ) : null}
-
+          {recalculationPending ? <RecalculationSkeleton /> : (
+            <>
           <section className="panel overflow-hidden">
             <div className="border-b border-slate-200 bg-[#214064] p-5 text-white">
               <div className="flex flex-wrap items-start justify-between gap-4">
@@ -416,6 +480,8 @@ export default function SuggestionShow({ suggestion, dryRun, autoAssign, glpiWeb
               <SimilarTicketsTable tickets={similarTickets} />
             </EvidenceBlock>
           </section>
+            </>
+          )}
         </div>
 
         <aside className="space-y-4 xl:sticky xl:top-24 xl:self-start">
