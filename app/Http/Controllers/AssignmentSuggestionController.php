@@ -15,7 +15,24 @@ class AssignmentSuggestionController extends Controller
     {
         $this->authorize('viewAny', GlpiAiAssignmentSuggestion::class);
 
+        $view = $request->string('view', 'pending')->toString();
+        $validViews = ['pending', 'accepted', 'manual_triage', 'rejected', 'glpi_closed', 'failed', 'all'];
+
+        if (! in_array($view, $validViews, true)) {
+            $view = 'pending';
+        }
+
+        $statusByView = [
+            'pending' => 'pending',
+            'accepted' => 'accepted',
+            'manual_triage' => 'manual_triage',
+            'rejected' => 'rejected',
+            'glpi_closed' => 'glpi_closed',
+            'failed' => 'failed',
+        ];
+
         $suggestions = GlpiAiAssignmentSuggestion::query()
+            ->when($view !== 'all' && ! $request->filled('status'), fn ($query) => $query->where('status', $statusByView[$view]))
             ->when($request->filled('search'), function ($query) use ($request): void {
                 $search = $request->string('search')->toString();
                 $query->where(function ($query) use ($search): void {
@@ -31,9 +48,25 @@ class AssignmentSuggestionController extends Controller
             ->paginate(12)
             ->withQueryString();
 
+        $tabCounts = GlpiAiAssignmentSuggestion::query()
+            ->selectRaw('status, count(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status')
+            ->map(fn ($total) => (int) $total)
+            ->all();
+
         return Inertia::render('GlpiAi/Suggestions/Index', [
             'suggestions' => $suggestions,
-            'filters' => $request->only(['search', 'status', 'risk', 'action']),
+            'filters' => array_merge($request->only(['search', 'status', 'risk', 'action']), ['view' => $view]),
+            'tabCounts' => [
+                'pending' => $tabCounts['pending'] ?? 0,
+                'accepted' => $tabCounts['accepted'] ?? 0,
+                'manual_triage' => $tabCounts['manual_triage'] ?? 0,
+                'rejected' => $tabCounts['rejected'] ?? 0,
+                'glpi_closed' => $tabCounts['glpi_closed'] ?? 0,
+                'failed' => $tabCounts['failed'] ?? 0,
+                'all' => array_sum($tabCounts),
+            ],
             'dryRun' => (bool) config('glpi-ai.dry_run'),
             'glpiWebBaseUrl' => (string) config('glpi-ai.glpi_api.web_base_url'),
         ]);

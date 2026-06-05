@@ -21,11 +21,25 @@ interface PaginatedSuggestions {
   total: number;
 }
 
+type SuggestionView = 'pending' | 'accepted' | 'manual_triage' | 'rejected' | 'glpi_closed' | 'failed' | 'all';
+
+type TabCounts = Record<SuggestionView, number>;
+
 const actionLabels: Record<string, string> = {
   assign_to_technician: 'Técnico',
   assign_to_group: 'Grupo',
   manual_triage: 'Triagem manual',
 };
+
+const suggestionViews: Array<{ key: SuggestionView; label: string; helper: string }> = [
+  { key: 'pending', label: 'Pendentes', helper: 'fila de trabalho' },
+  { key: 'accepted', label: 'Aprovadas', helper: 'validadas' },
+  { key: 'manual_triage', label: 'Triagem manual', helper: 'sem atribuicao segura' },
+  { key: 'rejected', label: 'Rejeitadas', helper: 'descartadas' },
+  { key: 'glpi_closed', label: 'Finalizadas', helper: 'fechadas no GLPI' },
+  { key: 'failed', label: 'Falhas', helper: 'exigem revisao' },
+  { key: 'all', label: 'Todas', helper: 'historico completo' },
+];
 
 const decisionMeta: Record<string, { icon: typeof UserCheck; tone: string; title: string }> = {
   assign_to_technician: {
@@ -164,6 +178,39 @@ function QueueMetric({ label, value, helper }: { label: string; value: string; h
   );
 }
 
+function SuggestionViewTabs({ currentView, counts }: { currentView: SuggestionView; counts: TabCounts }) {
+  return (
+    <nav className="panel mb-4 overflow-x-auto p-2" aria-label="Visoes da fila de sugestoes">
+      <div className="flex min-w-max gap-2">
+        {suggestionViews.map((item) => {
+          const active = currentView === item.key;
+
+          return (
+            <Link
+              key={item.key}
+              href={`/glpi-ai/suggestions?view=${item.key}`}
+              preserveScroll
+              className={`min-w-40 border px-4 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#214064] focus-visible:ring-offset-2 ${
+                active
+                  ? 'border-[#214064] bg-[#214064] text-white shadow-sm'
+                  : 'border-slate-200 bg-white text-slate-700 hover:border-[#214064] hover:bg-[#f6f8fb] hover:text-[#214064]'
+              }`}
+            >
+              <span className="flex items-center justify-between gap-3">
+                <span className="text-sm font-black">{item.label}</span>
+                <span className={`border px-2 py-0.5 text-xs font-black tabular-nums ${active ? 'border-white/30 bg-white/15 text-white' : 'border-slate-200 bg-slate-50 text-slate-700'}`}>
+                  {counts[item.key] ?? 0}
+                </span>
+              </span>
+              <span className={`mt-1 block text-xs font-semibold ${active ? 'text-white/75' : 'text-slate-500'}`}>{item.helper}</span>
+            </Link>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}
+
 function SuggestionRow({ item, glpiWebBaseUrl }: { item: Suggestion; glpiWebBaseUrl: string }) {
   const meta = decisionMeta[item.recommended_action] ?? decisionMeta.manual_triage;
   const Icon = meta.icon;
@@ -260,14 +307,16 @@ function MobileSuggestionCard({ item }: { item: Suggestion }) {
   );
 }
 
-export default function SuggestionsIndex({ suggestions, filters, dryRun, glpiWebBaseUrl }: { suggestions: PaginatedSuggestions; filters: Record<string, string>; dryRun: boolean; glpiWebBaseUrl: string }) {
+export default function SuggestionsIndex({ suggestions, filters, tabCounts, dryRun, glpiWebBaseUrl }: { suggestions: PaginatedSuggestions; filters: Record<string, string>; tabCounts: TabCounts; dryRun: boolean; glpiWebBaseUrl: string }) {
   const rows = suggestions.data ?? [];
+  const currentView = (filters.view ?? 'pending') as SuggestionView;
 
   return (
     <GlpiAiLayout title="Fila de Sugestões" dryRun={dryRun}>
       <Head title="Sugestões | GLPI BOT" />
 
       <SummaryStrip suggestions={suggestions} rows={rows} />
+      <SuggestionViewTabs currentView={currentView} counts={tabCounts} />
 
       <form
         className="panel mb-4 p-4"
@@ -277,6 +326,7 @@ export default function SuggestionsIndex({ suggestions, filters, dryRun, glpiWeb
           router.get('/glpi-ai/suggestions', data, { preserveState: true, preserveScroll: true });
         }}
       >
+        <input type="hidden" name="view" value={currentView} />
         <div className="grid gap-3 lg:grid-cols-[1fr_170px_170px_170px_auto_auto]">
           <label htmlFor="suggestion-search" className="min-w-0">
             <span className="mb-1.5 block text-[11px] font-black uppercase tracking-[0.16em] text-slate-500">Busca</span>
@@ -333,7 +383,7 @@ export default function SuggestionsIndex({ suggestions, filters, dryRun, glpiWeb
           </button>
 
           <Link
-            href="/glpi-ai/suggestions"
+            href="/glpi-ai/suggestions?view=pending"
             className="btn btn-secondary mt-5"
           >
             <RotateCcw aria-hidden="true" size={16} />
