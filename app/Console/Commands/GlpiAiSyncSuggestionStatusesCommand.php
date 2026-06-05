@@ -16,7 +16,7 @@ class GlpiAiSyncSuggestionStatusesCommand extends Command
 {
     protected $signature = 'glpi-ai:sync-suggestion-statuses {--limit=100}';
 
-    protected $description = 'Atualiza sugestoes locais quando o chamado correspondente for solucionado/fechado no GLPI.';
+    protected $description = 'Atualiza sugestões locais quando o chamado correspondente for solucionado/fechado no GLPI.';
 
     public function handle(GlpiTicketApiRepository $tickets, OperationalRunService $runs): int
     {
@@ -62,9 +62,9 @@ class GlpiAiSyncSuggestionStatusesCommand extends Command
             $closed++;
         }
 
-        $this->info("Sugestoes finalizadas por status do GLPI: {$closed}.");
+        $this->info("Sugestões finalizadas por status do GLPI: {$closed}.");
         $run->update([
-            'summary' => "Sugestoes finalizadas por status do GLPI: {$closed}.",
+            'summary' => "Sugestões finalizadas por status do GLPI: {$closed}.",
             'metadata' => array_merge($run->metadata ?? [], [
                 'checked' => $suggestions->count(),
                 'closed' => $closed,

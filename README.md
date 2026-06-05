@@ -12,11 +12,11 @@ O sistema não responde automaticamente ao usuário final e não escreve diretam
 - Gera embeddings dos chamados históricos.
 - Analisa chamados novos.
 - Busca chamados semanticamente parecidos.
-- Calcula ranking de técnicos com base em similaridade, categoria, histórico, recência, carga e feedback humano.
+- Calcula ranking de técnicos com base em similaridade, categoria, histórico, recência, carga, contexto e feedback humano.
 - Usa OpenRouter para validar e explicar a recomendação.
 - Exibe sugestões em painel administrativo.
-- Permite aprovar, rejeitar, escolher outro técnico, enviar para triagem manual e recalcular.
-- Registra auditoria de análises, ações humanas, payloads e respostas.
+- Permite aprovar, rejeitar, escolher outro técnico, enviar para triagem manual, recalcular ranking e revalidar a IA pelo painel.
+- Registra auditoria de análises, ações humanas, execuções do scheduler, payloads e respostas.
 - Aprende operacionalmente com aprovações/rejeições e escolha manual de técnico.
 - Pode atribuir chamados via API REST do GLPI, somente quando habilitado e aprovado.
 
@@ -47,59 +47,16 @@ No Windows, confira qual `php.ini` está sendo usado:
 php --ini
 ```
 
-## Baixar o Sistema
-
-Se estiver usando Git:
-
-```bash
-git clone URL_DO_REPOSITORIO glpi-bo
-cd glpi-bo
-```
-
-Se você recebeu o projeto em `.zip`, extraia para uma pasta, por exemplo:
-
-```text
-C:\Users\seu.usuario\Desktop\glpi-bo
-```
-
-Depois abra o terminal dentro da pasta do projeto.
-
 ## Instalação Local
 
-Instale dependências:
-
 ```bash
+git clone https://github.com/CorenSC/glpi-bot.git glpi-bot
+cd glpi-bot
 composer install
 npm install
-```
-
-Crie o `.env`:
-
-```bash
 copy .env.example .env
-```
-
-No Linux/macOS:
-
-```bash
-cp .env.example .env
-```
-
-Gere a chave da aplicação:
-
-```bash
 php artisan key:generate
-```
-
-Configure o banco no `.env`, crie o banco no MariaDB/MySQL e rode as migrations:
-
-```bash
 php artisan migrate
-```
-
-Compile o frontend:
-
-```bash
 npm run build
 ```
 
@@ -128,8 +85,8 @@ DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_DATABASE=glpi_bot
-DB_USERNAME=root
-DB_PASSWORD=
+DB_USERNAME=glpi_bot
+DB_PASSWORD=senha_forte
 ```
 
 Para zerar o banco interno e recriar as tabelas:
@@ -154,7 +111,7 @@ Significado:
 
 - `GLPI_AI_DRY_RUN=true`: simulação. Nunca escreve no GLPI.
 - `GLPI_AI_AUTO_ASSIGN=false`: desliga atribuição via API.
-- `GLPI_AI_REQUIRE_HUMAN_APPROVAL=true`: mesmo com autoatribuição habilitada, o comando de análise só cria sugestão; você decide no painel.
+- `GLPI_AI_REQUIRE_HUMAN_APPROVAL=true`: mesmo com autoatribuição habilitada, a análise só cria sugestão; você decide no painel.
 
 Configuração para teste real controlado:
 
@@ -164,10 +121,7 @@ GLPI_AI_AUTO_ASSIGN=true
 GLPI_AI_REQUIRE_HUMAN_APPROVAL=true
 ```
 
-Nesse modo:
-
-- `glpi-ai:analyze-new-tickets` apenas cria sugestões.
-- A escrita real no GLPI só acontece quando você abre a sugestão no painel e clica em atribuir.
+Nesse modo, `glpi-ai:analyze-new-tickets` apenas cria sugestões. A escrita real no GLPI só acontece quando você abre a sugestão no painel e confirma a ação.
 
 Depois de mudar `.env`, rode:
 
@@ -175,9 +129,36 @@ Depois de mudar `.env`, rode:
 php artisan optimize:clear
 ```
 
-## Configuração da API do GLPI
+## Configuração Editável Pelo Painel
 
-No `.env`:
+Por padrão, a tela `/glpi-ai/settings` é somente leitura. Para permitir edição segura pelo painel:
+
+```env
+GLPI_AI_ENABLE_DASHBOARD_SETTINGS_EDIT=true
+```
+
+O painel permite alterar parâmetros operacionais sem expor tokens:
+
+- dry-run;
+- autoatribuição;
+- exigência de aprovação humana;
+- thresholds de confiança;
+- quantidade de similares;
+- diferença mínima entre candidatos;
+- intervalo de análise de chamados novos;
+- dias para arquivamento de sugestões finalizadas;
+- status de chamados novos e históricos.
+
+As alterações são gravadas em `glpi_ai_settings` e auditadas em execuções operacionais. Tokens do GLPI, LDAP e OpenRouter não são exibidos nem editados pelo painel.
+
+Variáveis novas do bloco operacional:
+
+```env
+GLPI_AI_ANALYZE_NEW_TICKETS_INTERVAL_MINUTES=2
+GLPI_AI_ARCHIVE_AFTER_DAYS=30
+```
+
+## Configuração da API do GLPI
 
 ```env
 GLPI_API_BASE_URL=https://chamados.exemplo.gov.br/apirest.php
@@ -189,9 +170,7 @@ GLPI_API_ENTITY_ID=all
 GLPI_API_ENTITY_RECURSIVE=true
 ```
 
-`GLPI_API_BASE_URL` é a URL da API REST.
-
-`GLPI_WEB_BASE_URL` é usado para gerar links diretos para o chamado:
+`GLPI_WEB_BASE_URL` é usado para gerar links diretos:
 
 ```text
 https://chamados.exemplo.gov.br/front/ticket.form.php?id=1924
@@ -209,48 +188,11 @@ https://chamados.exemplo.gov.br/front/ticket.form.php?id=1924
 8. No cadastro do usuário, habilite token de API ou token pessoal.
 9. Copie o token do usuário para `GLPI_USER_TOKEN`.
 
-O usuário do robô precisa conseguir ler:
+O usuário do robô precisa conseguir ler chamados, categorias, usuários/técnicos, grupos, soluções, acompanhamentos e vínculos de atribuição.
 
-- chamados;
-- categorias;
-- usuários/técnicos;
-- grupos;
-- soluções;
-- acompanhamentos;
-- vínculos de atribuição.
-
-Se você for testar atribuição real, ele também precisa permissão para:
-
-- atribuir técnico;
-- atribuir grupo;
-- adicionar acompanhamento/nota interna, se essa ação estiver habilitada.
-
-Guia complementar:
-
-```text
-docs/GLPI_API_SETUP.md
-```
-
-## Certificado SSL no Windows
-
-Se aparecer erro parecido com:
-
-```text
-cURL error 60: SSL certificate problem
-```
-
-Para teste local temporário:
-
-```env
-GLPI_API_VERIFY_SSL=false
-OPENROUTER_VERIFY_SSL=false
-```
-
-Em produção, não deixe assim. O correto é configurar `curl.cainfo` e `openssl.cafile` no `php.ini` com o arquivo `cacert.pem`.
+Se você for testar atribuição real, ele também precisa permissão para atribuir técnico, atribuir grupo e, se estiver habilitado, adicionar nota interna.
 
 ## OpenRouter
-
-No `.env`:
 
 ```env
 OPENROUTER_API_KEY=
@@ -265,17 +207,13 @@ Modelo de embedding:
 
 ```env
 GLPI_AI_EMBEDDING_PROVIDER=openrouter
-GLPI_AI_EMBEDDING_MODEL=nvidia/llama-nemotron-embed-vl-1b-v2:free
+GLPI_AI_EMBEDDING_MODEL="nvidia/llama-nemotron-embed-vl-1b-v2:free"
 GLPI_AI_EMBEDDING_DIMENSION=1536
 ```
 
-Verifique no OpenRouter se o modelo escolhido realmente suporta embeddings. Modelo de chat não é automaticamente modelo de embedding.
+Verifique no OpenRouter se o modelo escolhido suporta embeddings. Modelo de chat não é automaticamente modelo de embedding.
 
 ## Login e LDAP
-
-O sistema tem login próprio e pode autenticar via LDAP.
-
-Configuração:
 
 ```env
 LDAP_ENABLED=true
@@ -289,9 +227,7 @@ LDAP_USER_FILTER="(&(objectCategory=person)(objectClass=user)(sAMAccountName=%s)
 LDAP_REQUIRED_DESCRIPTION_CONTAINS=DTI
 ```
 
-Regra implementada:
-
-- se `LDAP_REQUIRED_DESCRIPTION_CONTAINS=DTI`, somente usuários cujo atributo `description` contenha `DTI` conseguem acessar.
+Se `LDAP_REQUIRED_DESCRIPTION_CONTAINS=DTI`, somente usuários cujo atributo `description` contenha `DTI` conseguem acessar.
 
 No Windows, habilite a extensão LDAP no `php.ini`:
 
@@ -299,20 +235,12 @@ No Windows, habilite a extensão LDAP no `php.ini`:
 extension=ldap
 ```
 
-Depois reinicie o terminal/servidor PHP.
-
 ## Fluxo de Uso
 
 Primeira carga:
 
 ```bash
 php artisan glpi-ai:sync-history
-php artisan glpi-ai:generate-embeddings
-```
-
-Para enviar todos os embeddings pendentes de uma vez:
-
-```bash
 php artisan glpi-ai:generate-embeddings --all
 ```
 
@@ -322,16 +250,22 @@ Analisar chamados novos:
 php artisan glpi-ai:analyze-new-tickets
 ```
 
-Analisar um chamado específico em dry-run:
+Analisar um chamado específico:
 
 ```bash
 php artisan glpi-ai:dry-run-ticket 1924
 ```
 
-Recalcular uma sugestão:
+Recalcular ranking de uma sugestão:
 
 ```bash
 php artisan glpi-ai:recalculate-suggestion 35
+```
+
+Arquivar sugestões finalizadas antigas:
+
+```bash
+php artisan glpi-ai:archive-suggestions --days=30
 ```
 
 ## O Que Cada Comando Faz
@@ -349,16 +283,11 @@ Normalmente:
 - `5`: solucionado;
 - `6`: fechado.
 
-Ele salva a base interna que será usada como histórico.
+Ele salva a base interna que será usada como histórico. Chamados já importados não são reprocessados sem necessidade.
 
 ### `glpi-ai:generate-embeddings`
 
-Gera embeddings apenas para registros que:
-
-- ainda não têm embedding;
-- ou tiveram conteúdo alterado.
-
-Ele não reprocessa tudo sem necessidade.
+Gera embeddings apenas para registros que ainda não têm embedding ou tiveram conteúdo alterado.
 
 ### `glpi-ai:analyze-new-tickets`
 
@@ -370,24 +299,15 @@ GLPI_AI_NEW_TICKET_STATUSES=1
 
 No GLPI, normalmente `1` significa `Novo`.
 
-O comando:
+O comando lê chamados novos, monta texto canônico, gera embedding temporário, busca similares, calcula ranking, chama a IA para validar/explicar, salva sugestão e não atribui sozinho se `GLPI_AI_REQUIRE_HUMAN_APPROVAL=true`.
 
-- lê chamados novos;
-- monta texto canônico;
-- gera embedding temporário;
-- busca similares;
-- calcula ranking;
-- chama a IA para validar/explicar;
-- salva sugestão;
-- não atribui sozinho se `GLPI_AI_REQUIRE_HUMAN_APPROVAL=true`.
+### `glpi-ai:sync-suggestion-statuses`
 
-### `glpi-ai:dry-run-ticket {id}`
+Verifica no GLPI se chamados com sugestão local foram solucionados ou fechados. Quando isso acontece, o GLPI BOT atualiza o status local e mantém histórico/auditoria.
 
-Analisa um chamado específico sempre em simulação.
+### Revalidação de IA pelo painel
 
-### `glpi-ai:recalculate-suggestion {id}`
-
-Recalcula uma sugestão existente.
+Na tela de detalhe da sugestão, use o botão de revalidação de IA quando quiser tentar novamente apenas a explicação/validação do modelo, sem refazer todo o ranking.
 
 ## Fila
 
@@ -396,8 +316,6 @@ Para rodar simples no seu PC:
 ```env
 QUEUE_CONNECTION=sync
 ```
-
-Assim os jobs rodam na hora.
 
 Para produção com fila no banco:
 
@@ -412,7 +330,7 @@ Worker:
 php artisan queue:work database --queue=glpi-ai --sleep=3 --tries=3 --timeout=300
 ```
 
-Se usar Redis em produção:
+Se usar Redis:
 
 ```env
 QUEUE_CONNECTION=redis
@@ -427,23 +345,18 @@ php artisan queue:work redis --queue=glpi-ai --sleep=3 --tries=3 --timeout=300
 
 O Scheduler permite rodar o robô continuamente.
 
-Exemplo de rotina:
+Rotina configurada:
 
 - sincronizar histórico: a cada hora;
 - gerar embeddings pendentes: a cada minuto;
-- analisar chamados novos: a cada cinco minutos;
-- sincronizar status de chamados finalizados: conforme configuração do projeto.
+- analisar chamados novos: intervalo configurável, padrão de 2 minutos;
+- sincronizar status de sugestões: a cada 5 minutos;
+- arquivar sugestões finalizadas antigas: diariamente.
 
 No Linux, configure o cron:
 
 ```bash
-* * * * * cd /var/www/glpi-bo && php artisan schedule:run >> /dev/null 2>&1
-```
-
-No Windows, use o Agendador de Tarefas chamando:
-
-```bash
-php artisan schedule:run
+* * * * * cd /var/www/glpi-bot && php artisan schedule:run >> /dev/null 2>&1
 ```
 
 ## Supervisor em Produção
@@ -452,7 +365,7 @@ Exemplo:
 
 ```ini
 [program:glpi-bot-worker]
-command=php /var/www/glpi-bo/artisan queue:work database --queue=glpi-ai --sleep=3 --tries=3 --timeout=300
+command=php /var/www/glpi-bot/artisan queue:work database --queue=glpi-ai --sleep=3 --tries=3 --timeout=300
 autostart=true
 autorestart=true
 user=www-data
@@ -472,18 +385,18 @@ Rotas principais:
 - `/glpi-ai/audit`: auditoria.
 - `/glpi-ai/settings`: configurações.
 
-O painel mostra:
+O painel mostra estado de dry-run ou execução real, sugestões pendentes, técnico recomendado, grupo do chamado, confiança, risco, chamados similares, ranking de técnicos, histórico de ações humanas e link direto para o chamado no GLPI.
 
-- estado dry-run ou execução real;
-- sugestões pendentes;
-- técnico recomendado;
-- grupo do chamado;
-- confiança;
-- risco;
-- chamados similares;
-- ranking de técnicos;
-- histórico de ações humanas;
-- link direto para o chamado no GLPI.
+## Observabilidade
+
+O dashboard operacional mostra:
+
+- jobs pendentes;
+- jobs falhados;
+- último erro de IA;
+- último chamado analisado;
+- últimas execuções do scheduler;
+- duração e status de sync, embeddings, análise e sincronização de status.
 
 ## Aprendizado por Validação Humana
 
@@ -508,7 +421,8 @@ A auditoria permite responder:
 - quais chamados similares influenciaram;
 - quem aprovou ou rejeitou;
 - se houve escrita real no GLPI;
-- qual erro ocorreu, se houver.
+- qual erro ocorreu, se houver;
+- qual execução do scheduler gerou o evento.
 
 ## Teste Real Seguro
 
@@ -557,9 +471,28 @@ GLPI_AI_ONLY_UNASSIGNED_NEW_TICKETS=false
 GLPI_AI_IGNORE_GROUP_ASSIGNMENT_FOR_NEW_TICKETS=true
 GLPI_AI_HYDRATE_TICKET_SOLUTIONS=true
 GLPI_AI_HYDRATE_TICKET_FOLLOWUPS=false
+GLPI_AI_ANALYZE_NEW_TICKETS_INTERVAL_MINUTES=2
+GLPI_AI_ARCHIVE_AFTER_DAYS=30
 ```
 
 Observação: no seu fluxo, chamados novos já vêm com o grupo da TI. Por isso `GLPI_AI_IGNORE_GROUP_ASSIGNMENT_FOR_NEW_TICKETS=true` permite analisar chamados mesmo que já tenham grupo atribuído.
+
+## Deploy no Servidor
+
+Depois de baixar ou atualizar o projeto no servidor:
+
+```bash
+composer install --no-dev --optimize-autoloader
+npm install
+npm run build
+php artisan migrate
+php artisan optimize:clear
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+```
+
+Garanta que o cron do scheduler e o worker da fila estejam ativos.
 
 ## Problemas Comuns
 
@@ -569,12 +502,6 @@ Use fila síncrona no PC:
 
 ```env
 QUEUE_CONNECTION=sync
-```
-
-Depois:
-
-```bash
-php artisan optimize:clear
 ```
 
 ### `The environment file is invalid`
@@ -591,24 +518,11 @@ O modelo pode não estar disponível gratuitamente para embeddings, ou a conta p
 
 ### GLPI API HTTP 403
 
-Normalmente é permissão do usuário/token. Verifique:
-
-- entidade do usuário;
-- perfil;
-- permissões de chamado;
-- API habilitada;
-- App Token correto;
-- User Token correto.
+Normalmente é permissão do usuário/token. Verifique entidade, perfil, permissões de chamado, API habilitada, App Token e User Token.
 
 ### LDAP não autentica
 
-Verifique:
-
-- extensão `ldap` habilitada no PHP;
-- `LDAP_ENCRYPTION=none`, `ssl` ou `tls`;
-- base DN;
-- filtro de usuário;
-- atributo `description` contendo `DTI`.
+Verifique extensão `ldap`, `LDAP_ENCRYPTION`, base DN, filtro de usuário e atributo `description` contendo `DTI`.
 
 ## Regras de Segurança
 
@@ -621,17 +535,6 @@ QUEUE_CONNECTION=database
 DB_QUEUE_RETRY_AFTER=360
 GLPI_API_VERIFY_SSL=true
 OPENROUTER_VERIFY_SSL=true
-LDAP_ENCRYPTION=none
-```
-
-Depois de ajustar o `.env` no servidor:
-
-```bash
-php artisan optimize:clear
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
-npm run build
 ```
 
 - Dry-run nunca escreve no GLPI.
@@ -650,10 +553,11 @@ php artisan optimize:clear
 php artisan migrate
 php artisan migrate:fresh
 php artisan glpi-ai:sync-history
-php artisan glpi-ai:generate-embeddings
+php artisan glpi-ai:generate-embeddings --all
 php artisan glpi-ai:analyze-new-tickets
 php artisan glpi-ai:dry-run-ticket 1924
 php artisan glpi-ai:recalculate-suggestion 35
+php artisan glpi-ai:archive-suggestions --days=30
 npm run dev
 npm run build
 ```

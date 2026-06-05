@@ -18,11 +18,11 @@ const canonicalLabels = [
   'Grupo atribuído',
   'Grupo atribuido',
   'Técnico atribuído',
-  'Tecnico atribuido',
+  'Técnico atribuído',
   'Técnico solucionador',
-  'Tecnico solucionador',
+  'Técnico solucionador',
   'Histórico resumido',
-  'Historico resumido',
+  'Histórico resumido',
 ];
 
 const feedbackReasons = [

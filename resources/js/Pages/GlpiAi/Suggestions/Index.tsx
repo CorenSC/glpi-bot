@@ -37,7 +37,7 @@ const suggestionViews: Array<{ key: SuggestionView; label: string; helper: strin
   { key: 'manual_triage', label: 'Triagem manual', helper: 'sem atribuição segura' },
   { key: 'rejected', label: 'Rejeitadas', helper: 'descartadas' },
   { key: 'glpi_closed', label: 'Finalizadas', helper: 'fechadas no GLPI' },
-  { key: 'failed', label: 'Falhas', helper: 'exigem revisao' },
+  { key: 'failed', label: 'Falhas', helper: 'exigem revisão' },
   { key: 'all', label: 'Todas', helper: 'histórico completo' },
 ];
 
@@ -180,7 +180,7 @@ function QueueMetric({ label, value, helper }: { label: string; value: string; h
 
 function SuggestionViewTabs({ currentView, counts }: { currentView: SuggestionView; counts: TabCounts }) {
   return (
-    <nav className="panel mb-4 overflow-x-auto p-2" aria-label="Visoes da fila de sugestoes">
+    <nav className="panel mb-4 overflow-x-auto p-2" aria-label="Visões da fila de sugestões">
       <div className="flex min-w-max gap-2">
         {suggestionViews.map((item) => {
           const active = currentView === item.key;

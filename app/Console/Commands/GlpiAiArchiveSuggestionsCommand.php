@@ -12,9 +12,9 @@ use Illuminate\Console\Command;
 
 class GlpiAiArchiveSuggestionsCommand extends Command
 {
-    protected $signature = 'glpi-ai:archive-suggestions {--days=30 : Dias para manter sugestoes finalizadas fora do arquivo}';
+    protected $signature = 'glpi-ai:archive-suggestions {--days=30 : Dias para manter sugestões finalizadas fora do arquivo}';
 
-    protected $description = 'Arquiva sugestoes finalizadas antigas para manter a fila operacional limpa.';
+    protected $description = 'Arquiva sugestões finalizadas antigas para manter a fila operacional limpa.';
 
     public function handle(OperationalRunService $runs): int
     {
@@ -40,9 +40,9 @@ class GlpiAiArchiveSuggestionsCommand extends Command
             ->where('updated_at', '<=', now()->subDays($days))
             ->update(['archived_at' => now()]);
 
-        $this->info("Sugestoes arquivadas: {$archived}.");
+        $this->info("Sugestões arquivadas: {$archived}.");
         $run->update([
-            'summary' => "Sugestoes arquivadas: {$archived}.",
+            'summary' => "Sugestões arquivadas: {$archived}.",
             'metadata' => array_merge($run->metadata ?? [], ['archived' => $archived]),
         ]);
 

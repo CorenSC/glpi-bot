@@ -40,6 +40,8 @@ return [
     'text_limit' => (int) env('GLPI_AI_TEXT_LIMIT', 12000),
     'request_timeout' => (int) env('GLPI_AI_REQUEST_TIMEOUT', 30),
     'queue_name' => env('GLPI_AI_QUEUE_NAME', 'glpi-ai'),
+    'analyze_new_tickets_interval_minutes' => (int) env('GLPI_AI_ANALYZE_NEW_TICKETS_INTERVAL_MINUTES', 2),
+    'archive_after_days' => (int) env('GLPI_AI_ARCHIVE_AFTER_DAYS', 30),
     'enable_manual_approval' => env('GLPI_AI_ENABLE_MANUAL_APPROVAL', true),
     'require_human_approval' => env('GLPI_AI_REQUIRE_HUMAN_APPROVAL', true),
     'enable_dashboard_settings_edit' => env('GLPI_AI_ENABLE_DASHBOARD_SETTINGS_EDIT', false),

@@ -10,6 +10,7 @@ use App\AI\Embeddings\OpenRouterEmbeddingProvider;
 use App\Models\GlpiAiAssignmentSuggestion;
 use App\Policies\GlpiAiAssignmentSuggestionPolicy;
 use App\Policies\GlpiAiPolicy;
+use App\Services\GlpiAi\GlpiAiSettingsService;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -30,6 +31,8 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        app(GlpiAiSettingsService::class)->applyDatabaseOverrides();
+
         Gate::policy(GlpiAiAssignmentSuggestion::class, GlpiAiAssignmentSuggestionPolicy::class);
 
         $policy = app(GlpiAiPolicy::class);

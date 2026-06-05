@@ -47,7 +47,7 @@ class GlpiAiAnalyzeNewTicketsCommand extends Command
         $this->line("Chamados com status configurado para análise: {$inspection['status_matched']}.");
         $this->line("Chamados ignorados por já terem atribuição que bloqueia análise: {$inspection['assigned_filtered']}.");
         $this->line('Chamados ignorados por já terem análise/sugestão: '.count($ignoredIds).'.');
-        $this->info("Analises enviadas para processamento: {$items->count()}.");
+        $this->info("Análises enviadas para processamento: {$items->count()}.");
         $items->each(fn (array $ticket) => AnalyzeNewGlpiTicketJob::dispatch($ticket, false));
         $run->update([
             'summary' => "Chamados verificados: {$inspection['scanned']}; enviados para análise: {$items->count()}.",
