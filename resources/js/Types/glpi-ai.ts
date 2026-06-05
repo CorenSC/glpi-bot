@@ -12,6 +12,11 @@ export interface Suggestion {
   recommended_group_id?: number;
   recommended_group_name?: string;
   confidence: number;
+  ranking_confidence?: number;
+  ai_confidence?: number;
+  final_confidence?: number;
+  block_reason_code?: string;
+  block_reason?: string;
   reason?: string;
   warnings?: string[];
   risk_level: RiskLevel;
@@ -42,6 +47,8 @@ export interface AnalysisRun {
 export interface HumanFeedback {
   id: number;
   action: string;
+  reason_code?: string;
+  learning_weight?: number;
   observation?: string;
   previous_status?: string;
   new_status?: string;

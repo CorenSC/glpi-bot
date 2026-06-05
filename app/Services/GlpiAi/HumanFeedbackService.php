@@ -15,6 +15,8 @@ final class HumanFeedbackService
         $previous = $suggestion->status;
         $selectedTechnicianId = $request->integer('technician_id') ?: $suggestion->recommended_technician_id;
         $effectiveAction = $action;
+        $reasonCode = $request->string('reason_code')->toString() ?: null;
+        $observation = $request->string('observation')->toString();
 
         if ($action === 'approve' && $selectedTechnicianId && (int) $selectedTechnicianId !== (int) $suggestion->recommended_technician_id) {
             $effectiveAction = 'assign_other_technician';
@@ -30,9 +32,17 @@ final class HumanFeedbackService
             $suggestion->recommended_technician_name = is_array($candidate) ? ($candidate['technician_name'] ?? $suggestion->recommended_technician_name) : $suggestion->recommended_technician_name;
         }
 
+        $learningWeight = $this->learningWeight(
+            $effectiveAction,
+            $reasonCode,
+            $observation,
+            (int) $selectedTechnicianId,
+            (int) $suggestion->recommended_technician_id,
+        );
+
         $suggestion->update([
             'status' => $newStatus,
-            'human_observation' => $request->string('observation')->toString() ?: $suggestion->human_observation,
+            'human_observation' => $observation ?: $suggestion->human_observation,
             'action_taken' => $effectiveAction,
             'action_taken_at' => now(),
             'recommended_technician_id' => $suggestion->recommended_technician_id,
@@ -46,18 +56,35 @@ final class HumanFeedbackService
             'analysis_run_id' => $suggestion->analysis_run_id,
             'user_id' => $request->user()?->id,
             'action' => $effectiveAction,
+            'reason_code' => $reasonCode,
+            'learning_weight' => $learningWeight,
             'previous_status' => $previous,
             'new_status' => $newStatus,
             'selected_technician_id' => $selectedTechnicianId,
             'selected_group_id' => $request->integer('group_id') ?: $suggestion->recommended_group_id,
-            'observation' => $request->string('observation')->toString(),
+            'observation' => $observation,
             'ip_address' => $request->ip(),
             'user_agent' => $request->userAgent(),
             'metadata' => [
                 'recommended_technician_id' => $suggestion->recommended_technician_id,
                 'recommended_group_id' => $suggestion->recommended_group_id,
-                'learning_signal' => true,
+                'learning_signal' => $learningWeight !== 0.0,
             ],
         ]);
+    }
+
+    private function learningWeight(string $action, ?string $reasonCode, string $observation, int $selectedTechnicianId, int $recommendedTechnicianId): float
+    {
+        $hasReason = $reasonCode !== null || trim($observation) !== '';
+        $changedTechnician = $selectedTechnicianId > 0 && $recommendedTechnicianId > 0 && $selectedTechnicianId !== $recommendedTechnicianId;
+
+        return match ($action) {
+            'assign_other_technician' => $hasReason ? 1.0 : 0.6,
+            'assign_recommended_technician' => $hasReason ? 0.55 : 0.25,
+            'approve' => $hasReason ? 0.35 : 0.15,
+            'reject', 'mark_incorrect' => $hasReason ? -0.75 : -0.35,
+            'send_to_manual_triage' => $hasReason ? -0.35 : -0.15,
+            default => $changedTechnician ? 0.5 : 0.0,
+        };
     }
 }

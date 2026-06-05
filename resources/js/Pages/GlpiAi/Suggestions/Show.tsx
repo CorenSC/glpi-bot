@@ -1,5 +1,5 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { AlertTriangle, ArrowLeft, Check, ChevronDown, ExternalLink, FileText, History, RotateCcw, Send, Sparkles, UserCheck, Users, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Check, ChevronDown, Clock, ExternalLink, FileText, History, RotateCcw, Send, Sparkles, UserCheck, Users, X } from 'lucide-react';
 import { ConfidenceBadge, RiskBadge, StatusBadge } from '../../../Components/GlpiAi/Badges';
 import { SimilarTicketsTable, TechnicianRankingTable } from '../../../Components/GlpiAi/Tables';
 import { GlpiAiLayout } from '../../../Layouts/GlpiAiLayout';
@@ -15,6 +15,17 @@ const canonicalLabels = [
   'Tecnico atribuido',
   'Tecnico solucionador',
   'Historico resumido',
+];
+
+const feedbackReasons = [
+  { value: '', label: 'Selecione um motivo' },
+  { value: 'recommendation_correct', label: 'Recomendacao correta' },
+  { value: 'better_technician', label: 'Outro tecnico conhece melhor' },
+  { value: 'wrong_technician', label: 'Tecnico errado' },
+  { value: 'bad_similar_tickets', label: 'Chamados similares ruins' },
+  { value: 'wrong_category', label: 'Categoria interpretada errado' },
+  { value: 'weak_context', label: 'Contexto fraco' },
+  { value: 'not_dti_ticket', label: 'Nao era chamado para DTI' },
 ];
 
 function actionLabel(action: string) {
@@ -65,12 +76,17 @@ function auditSentences(suggestion: Suggestion) {
   const second = scores[1];
   const ai = (run?.ai_decision ?? {}) as Record<string, any>;
   const final = (run?.final_decision ?? {}) as Record<string, any>;
+  const rankingConfidence = suggestion.ranking_confidence ?? final.ranking_confidence;
+  const aiConfidence = suggestion.ai_confidence ?? final.ai_confidence;
+  const finalConfidence = suggestion.final_confidence ?? suggestion.confidence;
 
   return [
     top ? `Melhor candidato: ${top.technician_name ?? 'técnico sem nome'} com ${Number(top.final_score).toFixed(1)}%.` : 'Nenhum técnico entrou no ranking final.',
     second ? `Segundo candidato: ${second.technician_name ?? 'técnico sem nome'} com ${Number(second.final_score).toFixed(1)}%.` : '',
+    `Confianças: ranking ${Number(rankingConfidence ?? 0).toFixed(1)}%, IA ${typeof aiConfidence === 'number' ? `${Number(aiConfidence).toFixed(1)}%` : 'sem validação'}, final ${Number(finalConfidence ?? 0).toFixed(1)}%.`,
     `Base usada: ${similar.length} chamado(s) similar(es).`,
     ai.reason ? `Validação da IA: ${ai.reason}` : '',
+    suggestion.block_reason ? `Bloqueio/atenção: ${suggestion.block_reason}` : '',
     final.dry_run ? 'Dry-run ativo: nenhuma alteração real será feita no GLPI.' : '',
   ].filter(Boolean);
 }
@@ -80,6 +96,23 @@ function scoreGap(scores: TechnicianScore[]) {
   return Math.abs(Number(scores[0]?.final_score ?? 0) - Number(scores[1]?.final_score ?? 0));
 }
 
+function pendingAge(createdAt?: string) {
+  if (!createdAt) return '-';
+  const minutes = Math.max(0, Math.floor((Date.now() - new Date(createdAt).getTime()) / 60000));
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ${minutes % 60}min`;
+  return `${Math.floor(hours / 24)}d ${hours % 24}h`;
+}
+
+function slaTone(createdAt?: string) {
+  if (!createdAt) return 'border-slate-200 bg-slate-50 text-slate-700';
+  const minutes = Math.max(0, Math.floor((Date.now() - new Date(createdAt).getTime()) / 60000));
+  if (minutes >= 240) return 'border-red-200 bg-red-50 text-red-900';
+  if (minutes >= 60) return 'border-amber-300 bg-amber-50 text-amber-900';
+  return 'border-slate-200 bg-slate-50 text-slate-700';
+}
+
 function MiniStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="border border-slate-200 bg-slate-50 px-3 py-2">
@@ -87,6 +120,11 @@ function MiniStat({ label, value }: { label: string; value: string }) {
       <p className="mt-1 font-black text-slate-950">{value}</p>
     </div>
   );
+}
+
+function percent(value?: number | null) {
+  if (typeof value !== 'number') return '-';
+  return `${Number(value).toFixed(1)}%`;
 }
 
 function EvidenceBlock({ title, count, defaultOpen, children }: { title: string; count?: number; defaultOpen?: boolean; children: React.ReactNode }) {
@@ -105,7 +143,7 @@ function EvidenceBlock({ title, count, defaultOpen, children }: { title: string;
 }
 
 export default function SuggestionShow({ suggestion, dryRun, autoAssign, glpiWebBaseUrl }: { suggestion: Suggestion; dryRun: boolean; autoAssign: boolean; glpiWebBaseUrl: string }) {
-  const form = useForm({ observation: '' });
+  const form = useForm({ observation: '', reason_code: '' });
   const run = suggestion.analysis_run;
   const scores = run?.technician_scores ?? [];
   const similarTickets = run?.similar_tickets ?? [];
@@ -129,6 +167,7 @@ export default function SuggestionShow({ suggestion, dryRun, autoAssign, glpiWeb
     const selected = document.querySelector<HTMLSelectElement>('#selected-technician-id')?.value;
     router.post(path, {
       observation: form.data.observation,
+      reason_code: form.data.reason_code,
       technician_id: selected || suggestion.recommended_technician_id,
     }, { preserveScroll: true });
   }
@@ -196,6 +235,26 @@ export default function SuggestionShow({ suggestion, dryRun, autoAssign, glpiWeb
                 <p className="mt-1 text-sm font-semibold opacity-80">{dryRun ? 'Nenhuma escrita será feita no GLPI.' : 'Ação real via API do GLPI.'}</p>
               </div>
             </div>
+
+            <div className="grid gap-3 border-t border-slate-200 p-4 sm:grid-cols-2 xl:grid-cols-4">
+              <MiniStat label="Confiança do ranking" value={percent(suggestion.ranking_confidence ?? suggestion.confidence)} />
+              <MiniStat label="Confiança da IA" value={percent(suggestion.ai_confidence)} />
+              <MiniStat label="Confiança final" value={percent(suggestion.final_confidence ?? suggestion.confidence)} />
+              <div className={`border px-3 py-2 ${slaTone(suggestion.created_at)}`}>
+                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.14em] opacity-70">
+                  <Clock size={13} />
+                  SLA local
+                </div>
+                <p className="mt-1 font-black">{suggestion.status === 'pending' ? pendingAge(suggestion.created_at) : 'finalizado'}</p>
+              </div>
+            </div>
+
+            {suggestion.block_reason ? (
+              <div className="mx-4 mb-4 border border-amber-300 bg-amber-50 p-3 text-sm font-semibold text-amber-900">
+                <p className="text-[11px] font-black uppercase tracking-[0.16em]">Motivo de bloqueio ou atenção</p>
+                <p className="mt-1">{suggestion.block_reason}</p>
+              </div>
+            ) : null}
           </section>
 
           {closeTechnicians.length > 1 ? (
@@ -285,10 +344,27 @@ export default function SuggestionShow({ suggestion, dryRun, autoAssign, glpiWeb
               Registre uma observação antes de aprovar, rejeitar ou simular uma atribuição.
             </p>
 
+            <label htmlFor="feedback-reason-code" className="mt-4 block">
+              <span className="eyebrow mb-1.5 block">Motivo da validação</span>
+              <select
+                id="feedback-reason-code"
+                className="field"
+                value={form.data.reason_code}
+                onChange={(event) => form.setData('reason_code', event.target.value)}
+              >
+                {feedbackReasons.map((reason) => (
+                  <option key={reason.value} value={reason.value}>{reason.label}</option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs font-semibold text-slate-500">
+                Esse motivo entra no aprendizado auditável do GLPI BOT.
+              </p>
+            </label>
+
             <textarea
               value={form.data.observation}
               onChange={(event) => form.setData('observation', event.target.value)}
-              className="textarea-field mt-4 min-h-28"
+              className="textarea-field mt-3 min-h-28"
               placeholder="Observação para auditoria"
             />
 
@@ -353,6 +429,9 @@ export default function SuggestionShow({ suggestion, dryRun, autoAssign, glpiWeb
                 {suggestion.feedbacks?.map((feedback) => (
                   <div key={feedback.id} className="border border-slate-200 bg-slate-50 p-3 text-sm">
                     <p className="font-black">{feedback.action}</p>
+                    <p className="mt-1 text-xs font-bold uppercase tracking-wide text-slate-500">
+                      Motivo: {feedback.reason_code || 'nao informado'} · peso: {typeof feedback.learning_weight === 'number' ? feedback.learning_weight.toFixed(2) : '-'}
+                    </p>
                     <p className="text-slate-600">{feedback.observation ?? 'Sem observação.'}</p>
                   </div>
                 ))}

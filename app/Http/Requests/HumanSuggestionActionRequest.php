@@ -17,6 +17,7 @@ class HumanSuggestionActionRequest extends FormRequest
     {
         return [
             'observation' => ['nullable', 'string', 'max:2000'],
+            'reason_code' => ['nullable', 'string', 'max:80'],
             'technician_id' => ['nullable', 'integer', 'min:1'],
             'group_id' => ['nullable', 'integer', 'min:1'],
         ];

@@ -66,6 +66,24 @@ export default function Dashboard({ metrics, dryRun, autoAssign }: { metrics: Re
         <MetricCard label="Ultimo erro IA" value={metrics.last_ai_error ? `#${metrics.last_ai_error.glpi_ticket_id}` : '-'} />
       </section>
 
+      <section className="panel mt-5 p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="font-black">Qualidade das decisões</h2>
+            <p className="mt-1 text-sm font-semibold text-slate-500">Sinais que mostram se a fila está saudável e se o aprendizado humano está vindo com contexto.</p>
+          </div>
+          <Link href="/glpi-ai/audit" className="btn btn-secondary">Abrir auditoria</Link>
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+          <MetricCard label="Pendentes +1h" value={metrics.quality?.pending_over_1h ?? 0} />
+          <MetricCard label="Pendentes +4h" value={metrics.quality?.pending_over_4h ?? 0} />
+          <MetricCard label="IA com falha" value={metrics.quality?.ai_validation_failed ?? 0} />
+          <MetricCard label="Feedback com motivo" value={metrics.quality?.feedback_with_reason ?? 0} />
+          <MetricCard label="Feedback sem motivo" value={metrics.quality?.feedback_without_reason ?? 0} />
+          <MetricCard label="Confiança final média" value={`${Number(metrics.quality?.average_final_confidence ?? 0).toFixed(1)}%`} />
+        </div>
+      </section>
+
       <section className="mt-5 grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
         <div className="panel p-5">
           <div className="flex items-center justify-between">

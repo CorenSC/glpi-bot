@@ -14,6 +14,7 @@ class GlpiAiHumanFeedback extends Model
     protected $guarded = [];
 
     protected $casts = [
+        'learning_weight' => 'float',
         'metadata' => 'array',
     ];
 

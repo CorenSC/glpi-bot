@@ -52,7 +52,10 @@ final class HumanFeedbackLearningService
             }
 
             $signals[$id] ??= ['score' => 0.5, 'positive' => 0, 'negative' => 0, 'total' => 0];
-            $weight = $this->weightForAction((string) $feedback->action);
+            $storedWeight = (float) ($feedback->learning_weight ?? 0);
+            $weight = $storedWeight !== 0.0
+                ? ($storedWeight * 0.10)
+                : $this->weightForAction((string) $feedback->action);
 
             if ($weight > 0) {
                 $signals[$id]['positive']++;

@@ -6,6 +6,7 @@ namespace App\Services\GlpiAi;
 
 use App\Models\GlpiAiAnalysisRun;
 use App\Models\GlpiAiAssignmentSuggestion;
+use App\Models\GlpiAiHumanFeedback;
 use App\Models\GlpiAiOperationalRun;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -27,6 +28,35 @@ final class DashboardMetricsService
             'auto_assign' => (bool) config('glpi-ai.auto_assign', false),
             'queue_pending_jobs' => $pendingJobs,
             'queue_failed_jobs' => $failedJobs,
+            'quality' => [
+                'pending_over_1h' => GlpiAiAssignmentSuggestion::query()
+                    ->where('status', 'pending')
+                    ->where('created_at', '<=', now()->subHour())
+                    ->count(),
+                'pending_over_4h' => GlpiAiAssignmentSuggestion::query()
+                    ->where('status', 'pending')
+                    ->where('created_at', '<=', now()->subHours(4))
+                    ->count(),
+                'ai_validation_failed' => GlpiAiAssignmentSuggestion::query()
+                    ->where('ai_validation_status', 'failed')
+                    ->count(),
+                'feedback_with_reason' => GlpiAiHumanFeedback::query()
+                    ->where(function ($query): void {
+                        $query->whereNotNull('reason_code')
+                            ->orWhereNotNull('observation');
+                    })
+                    ->count(),
+                'feedback_without_reason' => GlpiAiHumanFeedback::query()
+                    ->whereNull('reason_code')
+                    ->where(function ($query): void {
+                        $query->whereNull('observation')
+                            ->orWhere('observation', '');
+                    })
+                    ->count(),
+                'average_final_confidence' => round((float) GlpiAiAssignmentSuggestion::query()
+                    ->whereNotNull('final_confidence')
+                    ->avg('final_confidence'), 2),
+            ],
             'last_analyzed_ticket' => $lastAnalyzed,
             'last_ai_error' => $lastAiError,
             'last_operational_runs' => GlpiAiOperationalRun::query()
