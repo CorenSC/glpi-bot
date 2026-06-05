@@ -13,6 +13,7 @@ use App\Policies\GlpiAiPolicy;
 use App\Services\GlpiAi\GlpiAiSettingsService;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
+use Inertia\Inertia;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -39,5 +40,10 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('viewGlpiAiDashboard', fn ($user): bool => $policy->viewGlpiAiDashboard($user));
         Gate::define('runManualGlpiAiAnalysis', fn ($user): bool => $policy->runManualGlpiAiAnalysis($user));
         Gate::define('manageGlpiAiSettings', fn ($user): bool => $policy->manageGlpiAiSettings($user));
+
+        Inertia::share('flash', fn (): array => [
+            'success' => session('success'),
+            'error' => session('error'),
+        ]);
     }
 }

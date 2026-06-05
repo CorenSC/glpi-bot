@@ -149,7 +149,7 @@ final class GlpiAiAnalysisOrchestrator
             });
 
             if (! (bool) config('glpi-ai.require_human_approval', true) && ! $run->dry_run && (bool) config('glpi-ai.auto_assign') && $final['recommended_action'] !== RecommendedAction::ManualTriage->value) {
-                AssignGlpiTicketJob::dispatch($suggestion)->onQueue((string) config('glpi-ai.queue_name', 'glpi-ai'));
+                AssignGlpiTicketJob::dispatch($suggestion, true)->onQueue((string) config('glpi-ai.queue_name', 'glpi-ai'));
             }
 
             if (isset($aiResult['error']) && $suggestion->ai_validation_attempts < 3) {

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Enums\SuggestionStatus;
 use App\Enums\RecommendedAction;
+use App\Enums\SuggestionStatus;
 use App\Http\Requests\HumanSuggestionActionRequest;
 use App\Jobs\AssignGlpiTicketJob;
 use App\Jobs\RecalculateSuggestionJob;
@@ -31,7 +31,7 @@ class AssignmentSuggestionActionController extends Controller
             ], true);
 
         if ($canAssign) {
-            AssignGlpiTicketJob::dispatch($suggestion);
+            AssignGlpiTicketJob::dispatch($suggestion, false);
 
             return back()->with('success', 'Sugestão aprovada e atribuição enviada para o GLPI.');
         }
@@ -51,7 +51,7 @@ class AssignmentSuggestionActionController extends Controller
     {
         $this->authorize('executeAssignment', $suggestion);
         $feedback->record($suggestion, 'assign_recommended_technician', SuggestionStatus::Accepted->value, $request);
-        AssignGlpiTicketJob::dispatch($suggestion);
+        AssignGlpiTicketJob::dispatch($suggestion, false);
 
         return back()->with('success', config('glpi-ai.dry_run') ? 'Simulação registrada em dry-run.' : 'Atribuição enviada para fila.');
     }
@@ -60,7 +60,7 @@ class AssignmentSuggestionActionController extends Controller
     {
         $this->authorize('executeAssignment', $suggestion);
         $feedback->record($suggestion, 'assign_recommended_group', SuggestionStatus::Accepted->value, $request);
-        AssignGlpiTicketJob::dispatch($suggestion);
+        AssignGlpiTicketJob::dispatch($suggestion, false);
 
         return back()->with('success', config('glpi-ai.dry_run') ? 'Simulação registrada em dry-run.' : 'Atribuição enviada para fila.');
     }
@@ -76,11 +76,17 @@ class AssignmentSuggestionActionController extends Controller
     public function recalculate(GlpiAiAssignmentSuggestion $suggestion): RedirectResponse
     {
         $this->authorize('approve', $suggestion);
+        $suggestion->update([
+            'action_taken' => 'recalculate_requested',
+            'action_taken_at' => now(),
+            'error_message' => null,
+        ]);
+
         RecalculateSuggestionJob::dispatch($suggestion->id)
             ->onConnection('database')
             ->onQueue((string) config('glpi-ai.queue_name', 'glpi-ai'));
 
-        return back()->with('success', 'Recalculo enviado para a fila. Processe pelo terminal com queue:work.');
+        return back()->with('success', 'Recálculo enviado para a fila.');
     }
 
     public function revalidateAi(GlpiAiAssignmentSuggestion $suggestion): RedirectResponse

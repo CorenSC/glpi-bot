@@ -1,6 +1,8 @@
 import { Link, router, usePage } from '@inertiajs/react';
 import { AlertTriangle, BarChart3, ClipboardCheck, FileSearch, LogOut, Settings, ShieldCheck } from 'lucide-react';
+import { useEffect } from 'react';
 import type { PropsWithChildren } from 'react';
+import { Toaster, toast } from 'sonner';
 import { DryRunBanner } from '../Components/GlpiAi/DryRunBanner';
 
 interface Props extends PropsWithChildren {
@@ -18,10 +20,27 @@ const nav = [
 ] as const;
 
 export function GlpiAiLayout({ children, dryRun = true, autoAssign = false, title }: Props) {
-  const { url } = usePage();
+  const { url, props } = usePage<{
+    flash?: {
+      success?: string | null;
+      error?: string | null;
+    };
+  }>();
+
+  useEffect(() => {
+    if (props.flash?.success) {
+      toast.success(props.flash.success);
+    }
+
+    if (props.flash?.error) {
+      toast.error(props.flash.error);
+    }
+  }, [props.flash?.success, props.flash?.error]);
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-950">
+      <Toaster richColors position="top-right" closeButton />
+
       <aside className="fixed inset-y-0 left-0 hidden w-72 border-r border-slate-200 bg-white lg:flex lg:flex-col">
         <div className="border-b border-slate-200 px-5 py-5">
           <Link href="/glpi-ai" className="flex items-center gap-3">

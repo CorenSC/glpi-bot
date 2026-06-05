@@ -1,5 +1,6 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { AlertTriangle, ArrowLeft, Check, ChevronDown, Clock, ExternalLink, FileText, History, RotateCcw, Send, Sparkles, UserCheck, Users, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { ConfidenceBadge, RiskBadge, StatusBadge } from '../../../Components/GlpiAi/Badges';
 import { SimilarTicketsTable, TechnicianRankingTable } from '../../../Components/GlpiAi/Tables';
 import { GlpiAiLayout } from '../../../Layouts/GlpiAiLayout';
@@ -174,6 +175,7 @@ function EvidenceBlock({ title, count, defaultOpen, children }: { title: string;
 
 export default function SuggestionShow({ suggestion, dryRun, autoAssign, glpiWebBaseUrl }: { suggestion: Suggestion; dryRun: boolean; autoAssign: boolean; glpiWebBaseUrl: string }) {
   const form = useForm({ observation: '', reason_code: '' });
+  const [processingAction, setProcessingAction] = useState<string | null>(null);
   const run = suggestion.analysis_run;
   const scores = run?.technician_scores ?? [];
   const similarTickets = run?.similar_tickets ?? [];
@@ -188,19 +190,49 @@ export default function SuggestionShow({ suggestion, dryRun, autoAssign, glpiWeb
   const recommendedPerson = hasTechnician ? suggestion.recommended_technician_name ?? `ID ${suggestion.recommended_technician_id}` : 'Nenhum técnico recomendado';
   const recommendedGroup = hasGroup ? suggestion.recommended_group_name ?? `ID ${suggestion.recommended_group_id}` : 'Nenhum grupo';
   const ticketUrl = glpiTicketUrl(glpiWebBaseUrl, suggestion.glpi_ticket_id);
+  const recalculationPending = suggestion.action_taken === 'recalculate_requested';
+  const actionProcessing = form.processing || processingAction !== null || recalculationPending;
 
-  function post(path: string) {
-    form.post(path, { preserveScroll: true });
+  function post(path: string, action: string) {
+    setProcessingAction(action);
+    form.post(path, {
+      preserveScroll: true,
+      onFinish: () => setProcessingAction(null),
+    });
   }
 
-  function postWithSelectedTechnician(path: string) {
+  function postWithSelectedTechnician(path: string, action: string) {
     const selected = document.querySelector<HTMLSelectElement>('#selected-technician-id')?.value;
+    setProcessingAction(action);
     router.post(path, {
       observation: form.data.observation,
       reason_code: form.data.reason_code,
       technician_id: selected || suggestion.recommended_technician_id,
-    }, { preserveScroll: true });
+    }, {
+      preserveScroll: true,
+      onFinish: () => setProcessingAction(null),
+    });
   }
+
+  function queueAction(path: string, action: string) {
+    setProcessingAction(action);
+    router.post(path, {}, {
+      preserveScroll: true,
+      onFinish: () => setProcessingAction(null),
+    });
+  }
+
+  useEffect(() => {
+    if (!recalculationPending) {
+      return;
+    }
+
+    const interval = window.setInterval(() => {
+      router.reload({ only: ['suggestion'], preserveScroll: true });
+    }, 5000);
+
+    return () => window.clearInterval(interval);
+  }, [recalculationPending]);
 
   return (
     <GlpiAiLayout title={`Chamado #${suggestion.glpi_ticket_id}`} dryRun={dryRun} autoAssign={autoAssign}>
@@ -221,6 +253,25 @@ export default function SuggestionShow({ suggestion, dryRun, autoAssign, glpiWeb
 
       <section className="grid gap-5 xl:grid-cols-[1fr_360px]">
         <div className="space-y-5">
+          {recalculationPending ? (
+            <section className="panel border-[#214064]/30 bg-[#eef4fb] p-5">
+              <div className="flex flex-wrap items-center gap-3">
+                <RotateCcw className="animate-spin text-[#214064]" size={20} />
+                <div>
+                  <p className="font-black text-[#0e2a49]">Recálculo em andamento</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-600">
+                    O ranking está na fila. Quando o worker terminar, esta tela será atualizada com a nova recomendação.
+                  </p>
+                </div>
+              </div>
+              <div className="mt-4 grid gap-3 md:grid-cols-3">
+                <div className="h-20 animate-pulse bg-white/80" />
+                <div className="h-20 animate-pulse bg-white/80" />
+                <div className="h-20 animate-pulse bg-white/80" />
+              </div>
+            </section>
+          ) : null}
+
           <section className="panel overflow-hidden">
             <div className="border-b border-slate-200 bg-[#214064] p-5 text-white">
               <div className="flex flex-wrap items-start justify-between gap-4">
@@ -413,26 +464,27 @@ export default function SuggestionShow({ suggestion, dryRun, autoAssign, glpiWeb
             ) : null}
 
             <div className="mt-3 grid gap-2">
-              <button type="button" onClick={() => postWithSelectedTechnician(`/glpi-ai/suggestions/${suggestion.id}/approve`)} className="btn btn-success w-full">
-                <Check size={16} /> Aprovar sugestão
+              <button type="button" disabled={actionProcessing} onClick={() => postWithSelectedTechnician(`/glpi-ai/suggestions/${suggestion.id}/approve`, 'approve')} className="btn btn-success w-full">
+                <Check size={16} /> {processingAction === 'approve' ? 'Aprovando...' : 'Aprovar sugestão'}
               </button>
-              <button type="button" disabled={!hasTechnician} onClick={() => postWithSelectedTechnician(`/glpi-ai/suggestions/${suggestion.id}/assign-technician`)} className="btn btn-primary w-full">
-                <Send size={16} /> {dryRun ? 'Simular técnico' : 'Atribuir técnico'}
+              <button type="button" disabled={!hasTechnician || actionProcessing} onClick={() => postWithSelectedTechnician(`/glpi-ai/suggestions/${suggestion.id}/assign-technician`, 'assign-technician')} className="btn btn-primary w-full">
+                <Send size={16} /> {processingAction === 'assign-technician' ? 'Enviando...' : (dryRun ? 'Simular técnico' : 'Atribuir técnico')}
               </button>
-              <button type="button" disabled={!hasGroup} onClick={() => post(`/glpi-ai/suggestions/${suggestion.id}/assign-group`)} className="btn btn-secondary w-full">
-                <Send size={16} /> {dryRun ? 'Simular grupo' : 'Atribuir grupo'}
+              <button type="button" disabled={!hasGroup || actionProcessing} onClick={() => post(`/glpi-ai/suggestions/${suggestion.id}/assign-group`, 'assign-group')} className="btn btn-secondary w-full">
+                <Send size={16} /> {processingAction === 'assign-group' ? 'Enviando...' : (dryRun ? 'Simular grupo' : 'Atribuir grupo')}
               </button>
-              <button type="button" onClick={() => post(`/glpi-ai/suggestions/${suggestion.id}/manual-triage`)} className="btn btn-warning w-full">
-                Enviar para triagem manual
+              <button type="button" disabled={actionProcessing} onClick={() => post(`/glpi-ai/suggestions/${suggestion.id}/manual-triage`, 'manual-triage')} className="btn btn-warning w-full">
+                {processingAction === 'manual-triage' ? 'Enviando...' : 'Enviar para triagem manual'}
               </button>
-              <button type="button" onClick={() => post(`/glpi-ai/suggestions/${suggestion.id}/reject`)} className="btn btn-danger w-full">
-                <X size={16} /> Rejeitar
+              <button type="button" disabled={actionProcessing} onClick={() => post(`/glpi-ai/suggestions/${suggestion.id}/reject`, 'reject')} className="btn btn-danger w-full">
+                <X size={16} /> {processingAction === 'reject' ? 'Rejeitando...' : 'Rejeitar'}
               </button>
-              <button type="button" onClick={() => router.post(`/glpi-ai/suggestions/${suggestion.id}/recalculate`)} className="btn btn-secondary w-full">
-                <RotateCcw size={16} /> Recalcular
+              <button type="button" disabled={actionProcessing} onClick={() => queueAction(`/glpi-ai/suggestions/${suggestion.id}/recalculate`, 'recalculate')} className="btn btn-secondary w-full">
+                <RotateCcw className={processingAction === 'recalculate' || recalculationPending ? 'animate-spin' : ''} size={16} />
+                {recalculationPending ? 'Recalculando...' : 'Recalcular'}
               </button>
-              <button type="button" onClick={() => router.post(`/glpi-ai/suggestions/${suggestion.id}/revalidate-ai`)} className="btn btn-secondary w-full">
-                <Sparkles size={16} /> Reanalisar IA
+              <button type="button" disabled={actionProcessing} onClick={() => queueAction(`/glpi-ai/suggestions/${suggestion.id}/revalidate-ai`, 'revalidate-ai')} className="btn btn-secondary w-full">
+                <Sparkles size={16} /> {processingAction === 'revalidate-ai' ? 'Enviando...' : 'Reanalisar IA'}
               </button>
             </div>
 

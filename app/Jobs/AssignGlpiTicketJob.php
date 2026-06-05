@@ -22,7 +22,10 @@ class AssignGlpiTicketJob implements ShouldQueue
 
     public int $backoff = 20;
 
-    public function __construct(public GlpiAiAssignmentSuggestion $suggestion)
+    public function __construct(
+        public GlpiAiAssignmentSuggestion $suggestion,
+        public bool $automatic = false,
+    )
     {
         $this->onQueue((string) config('glpi-ai.queue_name', 'glpi-ai'));
     }
@@ -37,11 +40,17 @@ class AssignGlpiTicketJob implements ShouldQueue
                 default => ['skipped' => true, 'reason' => 'Manual triage decision.'],
             };
 
+            $skipped = (bool) ($result['skipped'] ?? false);
+
             $suggestion->update([
                 'glpi_payload' => $result['payload'] ?? null,
                 'glpi_api_response' => $result,
-                'status' => ($result['skipped'] ?? false) ? $suggestion->status : SuggestionStatus::AutoAssigned->value,
-                'action_taken' => ($result['skipped'] ?? false) ? 'dry_run_skipped' : 'auto_assigned',
+                'status' => $skipped
+                    ? $suggestion->status
+                    : ($this->automatic ? SuggestionStatus::AutoAssigned->value : SuggestionStatus::Accepted->value),
+                'action_taken' => $skipped
+                    ? 'dry_run_skipped'
+                    : ($this->automatic ? 'auto_assigned' : 'human_assignment_sent_to_glpi'),
                 'action_taken_at' => now(),
             ]);
         } catch (Throwable $throwable) {

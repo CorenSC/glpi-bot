@@ -27,6 +27,10 @@ class RecalculateSuggestionJob implements ShouldQueue
     public function handle(GlpiAiAnalysisOrchestrator $orchestrator): void
     {
         $suggestion = GlpiAiAssignmentSuggestion::query()->findOrFail($this->suggestionId);
-        $orchestrator->analyzeTicketId($suggestion->glpi_ticket_id, (bool) config('glpi-ai.dry_run', true), $suggestion);
+        $updated = $orchestrator->analyzeTicketId($suggestion->glpi_ticket_id, (bool) config('glpi-ai.dry_run', true), $suggestion);
+        $updated->update([
+            'action_taken' => 'recalculated',
+            'action_taken_at' => now(),
+        ]);
     }
 }

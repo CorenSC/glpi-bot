@@ -21,6 +21,8 @@ export interface Suggestion {
   warnings?: string[];
   risk_level: RiskLevel;
   status: SuggestionStatus;
+  action_taken?: string | null;
+  action_taken_at?: string | null;
   archived_at?: string;
   ai_validation_status?: 'pending' | 'running' | 'completed' | 'failed';
   ai_validation_attempts?: number;
