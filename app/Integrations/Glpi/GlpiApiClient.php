@@ -119,6 +119,10 @@ final class GlpiApiClient
             $payload = ['input' => ['tickets_id' => $ticketId, 'users_id' => $technicianId, 'type' => 2]];
             $response = $this->request()->withHeader('Session-Token', $sessionToken)->post('/Ticket_User', $payload);
 
+            if ($response->failed()) {
+                throw new RuntimeException('Falha na API do GLPI ao atribuir técnico: HTTP '.$response->status().' - '.$response->body());
+            }
+
             return ['payload' => $payload, 'response' => $response->json(), 'status' => $response->status()];
         });
     }
@@ -128,6 +132,10 @@ final class GlpiApiClient
         return $this->safeWrite(function (string $sessionToken) use ($ticketId, $groupId): array {
             $payload = ['input' => ['tickets_id' => $ticketId, 'groups_id' => $groupId, 'type' => 2]];
             $response = $this->request()->withHeader('Session-Token', $sessionToken)->post('/Group_Ticket', $payload);
+
+            if ($response->failed()) {
+                throw new RuntimeException('Falha na API do GLPI ao atribuir grupo: HTTP '.$response->status().' - '.$response->body());
+            }
 
             return ['payload' => $payload, 'response' => $response->json(), 'status' => $response->status()];
         });

@@ -1,6 +1,21 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { AlertTriangle, ArrowLeft, Check, ChevronDown, Clock, ExternalLink, FileText, History, RotateCcw, Send, Sparkles, UserCheck, Users, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import {
+  AlertTriangle,
+  ArrowLeft,
+  Check,
+  Clock,
+  ExternalLink,
+  FileText,
+  History,
+  ListChecks,
+  RotateCcw,
+  Send,
+  Sparkles,
+  UserCheck,
+  Users,
+  X,
+} from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { ConfidenceBadge, RiskBadge, StatusBadge } from '../../../Components/GlpiAi/Badges';
 import { SimilarTicketsTable, TechnicianRankingTable } from '../../../Components/GlpiAi/Tables';
 import { GlpiAiLayout } from '../../../Layouts/GlpiAiLayout';
@@ -19,11 +34,11 @@ const canonicalLabels = [
   'Grupo atribuído',
   'Grupo atribuido',
   'Técnico atribuído',
-  'Técnico atribuído',
+  'Tecnico atribuido',
   'Técnico solucionador',
-  'Técnico solucionador',
+  'Tecnico solucionador',
   'Histórico resumido',
-  'Histórico resumido',
+  'Historico resumido',
 ];
 
 const feedbackReasons = [
@@ -59,16 +74,20 @@ const aiValidationLabels: Record<string, string> = {
   failed: 'Falhou',
 };
 
+const tabLabels = {
+  summary: 'Resumo',
+  evidence: 'Evidências',
+  ranking: 'Ranking',
+  audit: 'Auditoria',
+  content: 'Conteúdo',
+} as const;
+
+type TabKey = keyof typeof tabLabels;
+
 function actionLabel(action: string) {
   if (action === 'assign_to_technician') return 'Sugerir técnico';
   if (action === 'assign_to_group') return 'Sugerir grupo';
   return 'Triagem manual';
-}
-
-function actionTone(action: string) {
-  if (action === 'assign_to_technician') return 'border-[#214064] bg-[#eef4fb] text-[#0e2a49]';
-  if (action === 'assign_to_group') return 'border-amber-300 bg-amber-50 text-amber-900';
-  return 'border-slate-300 bg-slate-100 text-slate-800';
 }
 
 function glpiTicketUrl(baseUrl: string, ticketId?: number | string) {
@@ -99,27 +118,9 @@ function canonicalSection(text: string | undefined, label: string) {
   return collected.join('\n').trim();
 }
 
-function auditSentences(suggestion: Suggestion) {
-  const run = suggestion.analysis_run;
-  const scores = run?.technician_scores ?? [];
-  const similar = run?.similar_tickets ?? [];
-  const top = scores[0];
-  const second = scores[1];
-  const ai = (run?.ai_decision ?? {}) as Record<string, any>;
-  const final = (run?.final_decision ?? {}) as Record<string, any>;
-  const rankingConfidence = suggestion.ranking_confidence ?? final.ranking_confidence;
-  const aiConfidence = suggestion.ai_confidence ?? final.ai_confidence;
-  const finalConfidence = suggestion.final_confidence ?? suggestion.confidence;
-
-  return [
-    top ? `Melhor candidato: ${top.technician_name ?? 'técnico sem nome'} com ${Number(top.final_score).toFixed(1)}%.` : 'Nenhum técnico entrou no ranking final.',
-    second ? `Segundo candidato: ${second.technician_name ?? 'técnico sem nome'} com ${Number(second.final_score).toFixed(1)}%.` : '',
-    `Confianças: ranking ${Number(rankingConfidence ?? 0).toFixed(1)}%, IA ${typeof aiConfidence === 'number' ? `${Number(aiConfidence).toFixed(1)}%` : 'sem validação'}, final ${Number(finalConfidence ?? 0).toFixed(1)}%.`,
-    `Base usada: ${similar.length} chamado(s) similar(es).`,
-    ai.reason ? `Validação da IA: ${ai.reason}` : '',
-    suggestion.block_reason ? `Bloqueio/atenção: ${suggestion.block_reason}` : '',
-    final.dry_run ? 'Dry-run ativo: nenhuma alteração real será feita no GLPI.' : '',
-  ].filter(Boolean);
+function percent(value?: number | null) {
+  if (typeof value !== 'number') return '-';
+  return `${Number(value).toFixed(1)}%`;
 }
 
 function scoreGap(scores: TechnicianScore[]) {
@@ -153,26 +154,6 @@ function MiniStat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function percent(value?: number | null) {
-  if (typeof value !== 'number') return '-';
-  return `${Number(value).toFixed(1)}%`;
-}
-
-function EvidenceBlock({ title, count, defaultOpen, children }: { title: string; count?: number; defaultOpen?: boolean; children: React.ReactNode }) {
-  return (
-    <details className="panel group" open={defaultOpen}>
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 hover:bg-slate-50">
-        <div>
-          <h3 className="font-black text-slate-950">{title}</h3>
-          {typeof count === 'number' ? <p className="mt-0.5 text-xs font-semibold text-slate-500">{count} registro(s)</p> : null}
-        </div>
-        <ChevronDown className="text-slate-500 transition group-open:rotate-180" size={18} />
-      </summary>
-      <div className="border-t border-slate-200 p-4">{children}</div>
-    </details>
-  );
-}
-
 function SkeletonBlock({ className = '' }: { className?: string }) {
   return <div className={`animate-pulse bg-slate-200/80 ${className}`} />;
 }
@@ -197,33 +178,20 @@ function RecalculationSkeleton() {
         </div>
 
         <div className="grid gap-3 p-4 md:grid-cols-3">
-          <SkeletonBlock className="h-32" />
-          <SkeletonBlock className="h-32" />
-          <SkeletonBlock className="h-32" />
-        </div>
-
-        <div className="grid gap-3 border-t border-slate-200 p-4 sm:grid-cols-2 xl:grid-cols-4">
-          <SkeletonBlock className="h-16" />
-          <SkeletonBlock className="h-16" />
-          <SkeletonBlock className="h-16" />
-          <SkeletonBlock className="h-16" />
+          <SkeletonBlock className="h-28" />
+          <SkeletonBlock className="h-28" />
+          <SkeletonBlock className="h-28" />
         </div>
       </section>
 
-      <section className="grid gap-5 2xl:grid-cols-[0.95fr_1.05fr]">
+      <section className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
         <div className="panel p-5">
           <SkeletonBlock className="h-5 w-44" />
-          <div className="mt-4 grid gap-3 sm:grid-cols-3">
-            <SkeletonBlock className="h-16" />
-            <SkeletonBlock className="h-16" />
-            <SkeletonBlock className="h-16" />
+          <div className="mt-4 space-y-3">
+            <SkeletonBlock className="h-12" />
+            <SkeletonBlock className="h-12" />
+            <SkeletonBlock className="h-12" />
           </div>
-          <div className="mt-5 space-y-2">
-            <SkeletonBlock className="h-4 w-20" />
-            <SkeletonBlock className="h-5 w-11/12" />
-            <SkeletonBlock className="h-5 w-4/5" />
-          </div>
-          <SkeletonBlock className="mt-5 h-44" />
         </div>
 
         <div className="panel p-5">
@@ -232,18 +200,7 @@ function RecalculationSkeleton() {
             <SkeletonBlock className="h-12" />
             <SkeletonBlock className="h-12" />
             <SkeletonBlock className="h-12" />
-            <SkeletonBlock className="h-12" />
           </div>
-        </div>
-      </section>
-
-      <section className="panel p-4">
-        <SkeletonBlock className="h-5 w-48" />
-        <div className="mt-4 space-y-2">
-          <SkeletonBlock className="h-10" />
-          <SkeletonBlock className="h-10" />
-          <SkeletonBlock className="h-10" />
-          <SkeletonBlock className="h-10" />
         </div>
       </section>
 
@@ -254,25 +211,70 @@ function RecalculationSkeleton() {
   );
 }
 
+function buildDecisionReasons(suggestion: Suggestion, scores: TechnicianScore[]) {
+  const run = suggestion.analysis_run;
+  const similar = run?.similar_tickets ?? [];
+  const top = scores[0];
+  const second = scores[1];
+  const ai = (run?.ai_decision ?? {}) as Record<string, any>;
+  const reasons = [];
+
+  if (top) {
+    reasons.push(`Melhor candidato: ${top.technician_name ?? 'técnico sem nome'} com ${Number(top.final_score).toFixed(1)}%.`);
+  } else {
+    reasons.push('Nenhum técnico entrou no ranking final.');
+  }
+
+  if (second) {
+    reasons.push(`Segundo colocado: ${second.technician_name ?? 'técnico sem nome'} com ${Number(second.final_score).toFixed(1)}%.`);
+  }
+
+  reasons.push(`Base usada: ${similar.length} chamado(s) similar(es).`);
+
+  if (suggestion.reason) {
+    reasons.push(suggestion.reason);
+  }
+
+  if (ai.reason) {
+    reasons.push(`Validação da IA: ${ai.reason}`);
+  }
+
+  if (suggestion.block_reason) {
+    reasons.push(`Atenção: ${suggestion.block_reason}`);
+  }
+
+  return reasons.slice(0, 5);
+}
+
+function compactTitle(value: string) {
+  return value.length > 180 ? `${value.slice(0, 180)}...` : value;
+}
+
 export default function SuggestionShow({ suggestion, dryRun, autoAssign, glpiWebBaseUrl }: { suggestion: Suggestion; dryRun: boolean; autoAssign: boolean; glpiWebBaseUrl: string }) {
   const form = useForm({ observation: '', reason_code: '' });
   const [processingAction, setProcessingAction] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<TabKey>('summary');
   const run = suggestion.analysis_run;
   const scores = run?.technician_scores ?? [];
   const similarTickets = run?.similar_tickets ?? [];
   const hasTechnician = Boolean(suggestion.recommended_technician_name || suggestion.recommended_technician_id);
   const hasGroup = Boolean(suggestion.recommended_group_name || suggestion.recommended_group_id);
   const title = canonicalValue(run?.canonical_text, 'Título') || canonicalValue(run?.canonical_text, 'Titulo') || suggestion.title || '-';
-  const category = canonicalValue(run?.canonical_text, 'Categoria detectada no título') || canonicalValue(run?.canonical_text, 'Categoria detectada no titulo') || suggestion.category_name || '-';
+  const category = canonicalValue(run?.canonical_text, 'Categoria detectada no título')
+    || canonicalValue(run?.canonical_text, 'Categoria detectada no titulo')
+    || suggestion.category_name
+    || '-';
   const description = canonicalSection(run?.canonical_text, 'Descrição') || canonicalSection(run?.canonical_text, 'Descricao');
-  const audit = auditSentences(suggestion);
-  const gap = scoreGap(scores);
-  const closeTechnicians = scores.slice(0, 4).filter((score, index) => index === 0 || Math.abs(Number(scores[0]?.final_score ?? 0) - Number(score.final_score ?? 0)) <= 5);
   const recommendedPerson = hasTechnician ? suggestion.recommended_technician_name ?? `ID ${suggestion.recommended_technician_id}` : 'Nenhum técnico recomendado';
   const recommendedGroup = hasGroup ? suggestion.recommended_group_name ?? `ID ${suggestion.recommended_group_id}` : 'Nenhum grupo';
   const ticketUrl = glpiTicketUrl(glpiWebBaseUrl, suggestion.glpi_ticket_id);
   const recalculationPending = suggestion.action_taken === 'recalculate_requested';
   const actionProcessing = form.processing || processingAction !== null || recalculationPending;
+  const gap = scoreGap(scores);
+  const closeTechnicians = scores.slice(0, 4).filter((score, index) => index === 0 || Math.abs(Number(scores[0]?.final_score ?? 0) - Number(score.final_score ?? 0)) <= 5);
+  const decisionReasons = useMemo(() => buildDecisionReasons(suggestion, scores), [suggestion, scores]);
+  const aiDecision = (run?.ai_decision ?? {}) as Record<string, any>;
+  const finalDecision = (run?.final_decision ?? {}) as Record<string, any>;
 
   function post(path: string, action: string) {
     setProcessingAction(action);
@@ -304,9 +306,7 @@ export default function SuggestionShow({ suggestion, dryRun, autoAssign, glpiWeb
   }
 
   useEffect(() => {
-    if (!recalculationPending) {
-      return;
-    }
+    if (!recalculationPending) return;
 
     const interval = window.setInterval(() => {
       router.reload({ only: ['suggestion'], preserveScroll: true });
@@ -334,152 +334,238 @@ export default function SuggestionShow({ suggestion, dryRun, autoAssign, glpiWeb
 
       <section className="grid gap-5 xl:grid-cols-[1fr_360px]">
         <div className="space-y-5">
-          {recalculationPending ? <RecalculationSkeleton /> : (
+          {recalculationPending ? (
+            <RecalculationSkeleton />
+          ) : (
             <>
-          <section className="panel overflow-hidden">
-            <div className="border-b border-slate-200 bg-[#214064] p-5 text-white">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                  <p className="text-[11px] font-black uppercase tracking-[0.18em] text-white/60">Decisão recomendada</p>
-                  <h2 className="mt-2 text-3xl font-black tracking-tight">{actionLabel(suggestion.recommended_action)}</h2>
-                  <p className="mt-2 max-w-4xl text-sm leading-6 text-white/75">{suggestion.reason || 'Sem justificativa registrada.'}</p>
+              <section className="panel overflow-hidden">
+                <div className="border-b border-slate-200 bg-[#214064] p-5 text-white">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div className="max-w-4xl">
+                      <p className="text-[11px] font-black uppercase tracking-[0.18em] text-white/60">Decisão recomendada</p>
+                      <h2 className="mt-2 text-3xl font-black tracking-tight">{actionLabel(suggestion.recommended_action)}</h2>
+                      <p className="mt-2 text-sm leading-6 text-white/80">{suggestion.reason || 'Sem justificativa registrada.'}</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <StatusBadge status={suggestion.status} />
+                      <RiskBadge risk={suggestion.risk_level} />
+                      <ConfidenceBadge value={suggestion.confidence} />
+                    </div>
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  <StatusBadge status={suggestion.status} />
-                  <RiskBadge risk={suggestion.risk_level} />
-                  <ConfidenceBadge value={suggestion.confidence} />
+
+                <div className="grid gap-3 p-4 md:grid-cols-3">
+                  <div className={`border p-4 ${hasTechnician ? 'border-[#214064] bg-[#eef4fb]' : 'border-slate-200 bg-white'}`}>
+                    <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wide text-slate-500">
+                      <UserCheck size={15} />
+                      Técnico
+                    </div>
+                    <p className="mt-2 text-xl font-black text-slate-950">{recommendedPerson}</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-600">{hasTechnician ? 'Principal responsável sugerido.' : 'Sem segurança para indicar pessoa.'}</p>
+                  </div>
+
+                  <div className="border border-slate-200 bg-white p-4">
+                    <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wide text-slate-500">
+                      <Users size={15} />
+                      Grupo
+                    </div>
+                    <p className="mt-2 text-xl font-black text-slate-950">{recommendedGroup}</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-600">No seu fluxo, grupo é contexto.</p>
+                  </div>
+
+                  <div className={`border p-4 ${dryRun ? 'border-amber-300 bg-amber-50 text-amber-900' : 'border-red-200 bg-red-50 text-red-900'}`}>
+                    <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wide opacity-70">
+                      <AlertTriangle size={15} />
+                      Operação
+                    </div>
+                    <p className="mt-2 text-xl font-black">{dryRun ? 'Apenas simulação' : 'Exige confirmação'}</p>
+                    <p className="mt-1 text-sm font-semibold opacity-80">{dryRun ? 'Nenhuma escrita será feita no GLPI.' : 'Ação real via API do GLPI.'}</p>
+                  </div>
                 </div>
-              </div>
-            </div>
+              </section>
 
-            <div className="grid gap-3 p-4 md:grid-cols-3">
-              <div className={`border p-4 ${hasTechnician ? 'border-[#214064] bg-[#eef4fb]' : 'border-slate-200 bg-white'}`}>
-                <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wide text-slate-500">
-                  <UserCheck size={15} />
-                  Técnico
-                </div>
-                <p className="mt-2 text-xl font-black text-slate-950">{recommendedPerson}</p>
-                <p className="mt-1 text-sm font-semibold text-slate-600">{hasTechnician ? 'Principal responsável sugerido.' : 'Sem segurança para indicar pessoa.'}</p>
-              </div>
-
-              <div className="border border-slate-200 bg-white p-4">
-                <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wide text-slate-500">
-                  <Users size={15} />
-                  Grupo
-                </div>
-                <p className="mt-2 text-xl font-black text-slate-950">{recommendedGroup}</p>
-                <p className="mt-1 text-sm font-semibold text-slate-600">No seu fluxo, grupo é contexto.</p>
-              </div>
-
-              <div className={`border p-4 ${actionTone(suggestion.recommended_action)}`}>
-                <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wide opacity-70">
-                  <AlertTriangle size={15} />
-                  Operação
-                </div>
-                <p className="mt-2 text-xl font-black">{dryRun ? 'Apenas simulação' : 'Exige confirmação'}</p>
-                <p className="mt-1 text-sm font-semibold opacity-80">{dryRun ? 'Nenhuma escrita será feita no GLPI.' : 'Ação real via API do GLPI.'}</p>
-              </div>
-            </div>
-
-            <div className="grid gap-3 border-t border-slate-200 p-4 sm:grid-cols-2 xl:grid-cols-4">
-              <MiniStat label="Confiança do ranking" value={percent(suggestion.ranking_confidence ?? suggestion.confidence)} />
-              <MiniStat label="Confiança da IA" value={percent(suggestion.ai_confidence)} />
-              <MiniStat label="Confiança final" value={percent(suggestion.final_confidence ?? suggestion.confidence)} />
-              <div className={`border px-3 py-2 ${slaTone(suggestion.created_at)}`}>
-                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.14em] opacity-70">
-                  <Clock size={13} />
-                  SLA local
-                </div>
-                <p className="mt-1 font-black">{suggestion.status === 'pending' ? pendingAge(suggestion.created_at) : 'finalizado'}</p>
-              </div>
-            </div>
-
-            {suggestion.block_reason ? (
-              <div className="mx-4 mb-4 border border-amber-300 bg-amber-50 p-3 text-sm font-semibold text-amber-900">
-                <p className="text-[11px] font-black uppercase tracking-[0.16em]">Motivo de bloqueio ou atenção</p>
-                <p className="mt-1">{suggestion.block_reason}</p>
-              </div>
-            ) : null}
-          </section>
-
-          {closeTechnicians.length > 1 ? (
-            <section className="border border-amber-300 bg-amber-50 p-4">
-              <p className="eyebrow text-amber-900">Candidatos próximos</p>
-              <p className="mt-1 text-sm font-semibold text-amber-900">
-                A diferença entre os melhores técnicos é pequena{gap !== null ? ` (${gap.toFixed(1)} ponto(s))` : ''}. Valide antes de aprovar.
-              </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {closeTechnicians.map((score) => (
-                  <span key={score.id} className="border border-amber-300 bg-white px-3 py-2 text-sm font-black text-amber-900">
-                    {score.technician_name ?? 'Técnico'} - {Number(score.final_score).toFixed(1)}%
-                  </span>
-                ))}
-              </div>
-            </section>
-          ) : null}
-
-          <section className="grid gap-5 2xl:grid-cols-[0.95fr_1.05fr]">
-            <div className="panel p-5">
-              <div className="flex items-center gap-2">
-                <FileText size={18} />
-                <h3 className="font-black">Chamado analisado</h3>
-              </div>
-
-              <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                <MiniStat label="GLPI" value={`#${suggestion.glpi_ticket_id}`} />
-                <MiniStat label="Categoria" value={category || '-'} />
-                <MiniStat label="Confiança" value={`${Number(suggestion.confidence ?? 0).toFixed(1)}%`} />
-              </div>
-
-              <div className="mt-4">
-                <p className="eyebrow">Título</p>
-                <p className="mt-1 text-base font-black leading-snug text-slate-950">{title}</p>
-              </div>
-
-              <details className="mt-4 border border-slate-200 bg-slate-50" open>
-                <summary className="cursor-pointer px-3 py-2 text-sm font-black text-slate-700 hover:bg-slate-100">Conteúdo usado na análise</summary>
-                <pre className="max-h-80 overflow-auto whitespace-pre-wrap border-t border-slate-200 p-3 font-sans text-sm leading-6 text-slate-800">
-                  {description || 'Sem descrição relevante no chamado. A decisão fica mais dependente da categoria e do histórico.'}
-                </pre>
-              </details>
-            </div>
-
-            <div className="panel p-5">
-              <div className="flex items-center gap-2">
-                <Sparkles size={18} />
-                <h3 className="font-black">Por que essa recomendação?</h3>
-              </div>
-
-              <ol className="mt-4 space-y-3 text-sm leading-6">
-                {audit.map((item, index) => (
-                  <li key={item} className="grid grid-cols-[28px_1fr] gap-3">
-                    <span className="grid size-7 place-items-center bg-[#214064] text-xs font-black text-white">{index + 1}</span>
-                    <span className="border border-slate-200 bg-slate-50 px-3 py-2">{item}</span>
-                  </li>
-                ))}
-              </ol>
-
-              {(suggestion.warnings ?? []).length > 0 ? (
-                <div className="mt-4 space-y-2">
-                  {suggestion.warnings?.map((warning) => (
-                    <p key={warning} className="border border-amber-300 bg-amber-50 p-3 text-sm font-semibold text-amber-900">{warning}</p>
-                  ))}
-                </div>
+              {closeTechnicians.length > 1 ? (
+                <section className="border border-amber-300 bg-amber-50 p-4">
+                  <p className="eyebrow text-amber-900">Candidatos próximos</p>
+                  <p className="mt-1 text-sm font-semibold text-amber-900">
+                    A diferença entre os melhores técnicos é pequena{gap !== null ? ` (${gap.toFixed(1)} ponto(s))` : ''}. Valide antes de aprovar.
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {closeTechnicians.map((score) => (
+                      <span key={score.id} className="border border-amber-300 bg-white px-3 py-2 text-sm font-black text-amber-900">
+                        {score.technician_name ?? 'Técnico'} - {Number(score.final_score).toFixed(1)}%
+                      </span>
+                    ))}
+                  </div>
+                </section>
               ) : null}
-            </div>
-          </section>
 
-          <section className="space-y-4">
-            <EvidenceBlock title="Ranking de técnicos" count={scores.length} defaultOpen>
-              {scores.length === 0 ? (
-                <p className="border border-amber-300 bg-amber-50 p-3 text-sm font-semibold text-amber-900">Nenhum técnico entrou no ranking. Reimporte o histórico e recalcule.</p>
-              ) : <TechnicianRankingTable scores={scores} />}
-            </EvidenceBlock>
+              <section className="panel overflow-hidden">
+                <div className="border-b border-slate-200 bg-white px-3 pt-3">
+                  <div className="flex gap-1 overflow-x-auto" role="tablist" aria-label="Detalhes da sugestão">
+                    {(Object.keys(tabLabels) as TabKey[]).map((tab) => (
+                      <button
+                        key={tab}
+                        type="button"
+                        onClick={() => setActiveTab(tab)}
+                        className={`min-h-11 whitespace-nowrap border px-4 text-sm font-black transition ${
+                          activeTab === tab
+                            ? 'border-[#214064] bg-[#214064] text-white'
+                            : 'border-transparent bg-white text-slate-600 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-950'
+                        }`}
+                        role="tab"
+                        aria-selected={activeTab === tab}
+                      >
+                        {tabLabels[tab]}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
-            <EvidenceBlock title="Chamados similares usados como referência" count={similarTickets.length}>
-              <SimilarTicketsTable tickets={similarTickets} />
-            </EvidenceBlock>
-          </section>
+                <div className="p-5">
+                  {activeTab === 'summary' ? (
+                    <div className="grid gap-5 2xl:grid-cols-[0.9fr_1.1fr]">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <FileText size={18} />
+                          <h3 className="font-black">Chamado analisado</h3>
+                        </div>
+
+                        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                          <MiniStat label="GLPI" value={`#${suggestion.glpi_ticket_id}`} />
+                          <MiniStat label="Categoria" value={category || '-'} />
+                          <MiniStat label="Confiança" value={`${Number(suggestion.confidence ?? 0).toFixed(1)}%`} />
+                        </div>
+
+                        <div className="mt-4">
+                          <p className="eyebrow">Título</p>
+                          <p className="mt-1 text-base font-black leading-snug text-slate-950">{compactTitle(title)}</p>
+                        </div>
+
+                        <div className={`mt-4 border px-3 py-2 ${slaTone(suggestion.created_at)}`}>
+                          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.14em] opacity-70">
+                            <Clock size={13} />
+                            SLA local
+                          </div>
+                          <p className="mt-1 font-black">{suggestion.status === 'pending' ? pendingAge(suggestion.created_at) : 'Finalizado'}</p>
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <Sparkles size={18} />
+                          <h3 className="font-black">Por que essa recomendação?</h3>
+                        </div>
+
+                        <ol className="mt-4 space-y-3 text-sm leading-6">
+                          {decisionReasons.map((item, index) => (
+                            <li key={`${index}-${item}`} className="grid grid-cols-[28px_1fr] gap-3">
+                              <span className="grid size-7 place-items-center bg-[#214064] text-xs font-black text-white">{index + 1}</span>
+                              <span className="border border-slate-200 bg-slate-50 px-3 py-2">{item}</span>
+                            </li>
+                          ))}
+                        </ol>
+
+                        {(suggestion.warnings ?? []).length > 0 ? (
+                          <div className="mt-4 space-y-2">
+                            {suggestion.warnings?.map((warning) => (
+                              <p key={warning} className="border border-amber-300 bg-amber-50 p-3 text-sm font-semibold text-amber-900">{warning}</p>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {activeTab === 'evidence' ? (
+                    <div>
+                      <div className="mb-4 flex items-center justify-between gap-3">
+                        <div>
+                          <h3 className="font-black">Chamados similares usados como referência</h3>
+                          <p className="text-sm font-semibold text-slate-500">{similarTickets.length} registro(s). Use isso para conferir se a base realmente parece parecida.</p>
+                        </div>
+                      </div>
+                      <SimilarTicketsTable tickets={similarTickets} />
+                    </div>
+                  ) : null}
+
+                  {activeTab === 'ranking' ? (
+                    <div>
+                      <div className="mb-4">
+                        <h3 className="font-black">Ranking de técnicos</h3>
+                        <p className="text-sm font-semibold text-slate-500">
+                          Esta aba mostra o cálculo completo. A tela inicial esconde esses detalhes para não atrapalhar a decisão.
+                        </p>
+                      </div>
+                      {scores.length === 0 ? (
+                        <p className="border border-amber-300 bg-amber-50 p-3 text-sm font-semibold text-amber-900">Nenhum técnico entrou no ranking. Reimporte o histórico e recalcule.</p>
+                      ) : (
+                        <TechnicianRankingTable scores={scores} />
+                      )}
+                    </div>
+                  ) : null}
+
+                  {activeTab === 'audit' ? (
+                    <div className="grid gap-5 2xl:grid-cols-2">
+                      <section>
+                        <div className="flex items-center gap-2">
+                          <ListChecks size={18} />
+                          <h3 className="font-black">Validação e decisão</h3>
+                        </div>
+
+                        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                          <MiniStat label="Ranking" value={percent(suggestion.ranking_confidence ?? suggestion.confidence)} />
+                          <MiniStat label="IA" value={percent(suggestion.ai_confidence)} />
+                          <MiniStat label="Final" value={percent(suggestion.final_confidence ?? suggestion.confidence)} />
+                        </div>
+
+                        <div className="mt-4 space-y-3 text-sm leading-6">
+                          <p className="border border-slate-200 bg-slate-50 p-3">
+                            Status da IA: <strong>{suggestion.ai_validation_status ? aiValidationLabels[suggestion.ai_validation_status] ?? suggestion.ai_validation_status : 'Não registrado'}</strong>
+                            {suggestion.ai_validation_attempts ? ` · tentativas: ${suggestion.ai_validation_attempts}` : ''}
+                          </p>
+                          {aiDecision.reason ? <p className="border border-slate-200 bg-slate-50 p-3">Validação da IA: {aiDecision.reason}</p> : null}
+                          {finalDecision.recommended_action ? <p className="border border-slate-200 bg-slate-50 p-3">Decisão final: {actionLabel(String(finalDecision.recommended_action))}</p> : null}
+                          {suggestion.ai_validation_error ? <p className="border border-red-200 bg-red-50 p-3 font-semibold text-red-900">{suggestion.ai_validation_error}</p> : null}
+                        </div>
+                      </section>
+
+                      <section>
+                        <div className="flex items-center gap-2">
+                          <History size={18} />
+                          <h3 className="font-black">Histórico local</h3>
+                        </div>
+
+                        {(suggestion.feedbacks ?? []).length === 0 ? (
+                          <p className="mt-4 border border-slate-200 bg-slate-50 p-3 text-sm font-semibold text-slate-500">Nenhuma ação humana registrada ainda.</p>
+                        ) : (
+                          <div className="mt-4 space-y-3">
+                            {suggestion.feedbacks?.map((feedback) => (
+                              <div key={feedback.id} className="border border-slate-200 bg-slate-50 p-3 text-sm">
+                                <p className="font-black">{feedbackActionLabels[feedback.action] ?? feedback.action}</p>
+                                <p className="mt-1 text-xs font-bold uppercase tracking-wide text-slate-500">
+                                  Motivo: {feedback.reason_code ? feedbackReasonLabels[feedback.reason_code] ?? feedback.reason_code : 'não informado'} · peso: {typeof feedback.learning_weight === 'number' ? feedback.learning_weight.toFixed(2) : '-'}
+                                </p>
+                                <p className="mt-1 text-slate-600">{feedback.observation ?? 'Sem observação.'}</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </section>
+                    </div>
+                  ) : null}
+
+                  {activeTab === 'content' ? (
+                    <div>
+                      <h3 className="font-black">Conteúdo usado na análise</h3>
+                      <p className="mt-1 text-sm font-semibold text-slate-500">Texto normalizado enviado para cálculo de similaridade e validação.</p>
+                      <pre className="mt-4 max-h-[560px] overflow-auto whitespace-pre-wrap border border-slate-200 bg-slate-50 p-4 font-sans text-sm leading-6 text-slate-800">
+                        {description || 'Sem descrição relevante no chamado. A decisão fica mais dependente da categoria e do histórico.'}
+                      </pre>
+                    </div>
+                  ) : null}
+                </div>
+              </section>
             </>
           )}
         </div>
@@ -553,15 +639,6 @@ export default function SuggestionShow({ suggestion, dryRun, autoAssign, glpiWeb
                 <Sparkles size={16} /> {processingAction === 'revalidate-ai' ? 'Enviando...' : 'Reanalisar IA'}
               </button>
             </div>
-
-            {suggestion.ai_validation_status ? (
-              <div className="mt-4 border border-slate-200 bg-slate-50 p-3 text-xs font-semibold text-slate-600">
-                <p className="font-black uppercase tracking-wide text-slate-500">Validação da IA</p>
-                <p className="mt-1">Status: {aiValidationLabels[suggestion.ai_validation_status] ?? suggestion.ai_validation_status}</p>
-                {suggestion.ai_validation_attempts ? <p>Tentativas: {suggestion.ai_validation_attempts}</p> : null}
-                {suggestion.ai_validation_error ? <p className="mt-1 text-[#9f2f2f]">{suggestion.ai_validation_error}</p> : null}
-              </div>
-            ) : null}
           </section>
 
           <section className="panel p-5">
@@ -574,15 +651,17 @@ export default function SuggestionShow({ suggestion, dryRun, autoAssign, glpiWeb
               <p className="mt-3 text-sm font-semibold text-slate-500">Nenhuma ação humana registrada ainda.</p>
             ) : (
               <div className="mt-4 space-y-3">
-                {suggestion.feedbacks?.map((feedback) => (
+                {suggestion.feedbacks?.slice(0, 3).map((feedback) => (
                   <div key={feedback.id} className="border border-slate-200 bg-slate-50 p-3 text-sm">
                     <p className="font-black">{feedbackActionLabels[feedback.action] ?? feedback.action}</p>
                     <p className="mt-1 text-xs font-bold uppercase tracking-wide text-slate-500">
-                      Motivo: {feedback.reason_code ? feedbackReasonLabels[feedback.reason_code] ?? feedback.reason_code : 'não informado'} · peso: {typeof feedback.learning_weight === 'number' ? feedback.learning_weight.toFixed(2) : '-'}
+                      Motivo: {feedback.reason_code ? feedbackReasonLabels[feedback.reason_code] ?? feedback.reason_code : 'não informado'}
                     </p>
-                    <p className="text-slate-600">{feedback.observation ?? 'Sem observação.'}</p>
                   </div>
                 ))}
+                {(suggestion.feedbacks?.length ?? 0) > 3 ? (
+                  <button type="button" onClick={() => setActiveTab('audit')} className="link-action text-sm">Ver histórico completo</button>
+                ) : null}
               </div>
             )}
           </section>
