@@ -27,6 +27,19 @@ class AssignGlpiTicketJobStatusTest extends TestCase
         $this->assertSame('human_assignment_sent_to_glpi', $suggestion->action_taken);
     }
 
+    public function test_human_assignment_writes_even_when_auto_assign_is_disabled(): void
+    {
+        $suggestion = $this->suggestion();
+
+        $this->fakeGlpiApi(autoAssign: false);
+
+        (new AssignGlpiTicketJob($suggestion, automatic: false))->handle(app(GlpiApiClient::class));
+
+        $this->assertSame(SuggestionStatus::Accepted->value, $suggestion->status);
+        $this->assertSame('human_assignment_sent_to_glpi', $suggestion->action_taken);
+        $this->assertSame(201, $suggestion->glpi_api_response['status']);
+    }
+
     public function test_automatic_assignment_uses_auto_assigned_status(): void
     {
         $suggestion = $this->suggestion();
@@ -53,10 +66,10 @@ class AssignGlpiTicketJobStatusTest extends TestCase
         ]);
     }
 
-    private function fakeGlpiApi(): void
+    private function fakeGlpiApi(bool $autoAssign = true): void
     {
         Config::set('glpi-ai.dry_run', false);
-        Config::set('glpi-ai.auto_assign', true);
+        Config::set('glpi-ai.auto_assign', $autoAssign);
         Config::set('glpi-ai.glpi_api.base_url', 'https://glpi.test/apirest.php');
         Config::set('glpi-ai.glpi_api.app_token', 'app-token');
         Config::set('glpi-ai.glpi_api.user_token', 'user-token');

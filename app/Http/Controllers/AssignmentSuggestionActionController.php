@@ -23,14 +23,13 @@ class AssignmentSuggestionActionController extends Controller
 
         $suggestion->refresh();
 
-        $canAssign = ! (bool) config('glpi-ai.dry_run')
-            && (bool) config('glpi-ai.auto_assign')
+        $canAssignAfterHumanApproval = ! (bool) config('glpi-ai.dry_run')
             && in_array($suggestion->recommended_action, [
                 RecommendedAction::AssignToTechnician->value,
                 RecommendedAction::AssignToGroup->value,
             ], true);
 
-        if ($canAssign) {
+        if ($canAssignAfterHumanApproval) {
             AssignGlpiTicketJob::dispatch($suggestion, false);
 
             return back()->with('success', 'Sugestão aprovada e atribuição enviada para o GLPI.');

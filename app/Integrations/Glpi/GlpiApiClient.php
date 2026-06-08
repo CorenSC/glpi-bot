@@ -143,8 +143,8 @@ final class GlpiApiClient
 
     private function safeWrite(callable $callback): array
     {
-        if ((bool) config('glpi-ai.dry_run', true) || ! (bool) config('glpi-ai.auto_assign', false)) {
-            return ['dry_run' => true, 'skipped' => true, 'reason' => 'Dry-run ativo ou autoatribuição desativada.'];
+        if ((bool) config('glpi-ai.dry_run', true)) {
+            return ['dry_run' => true, 'skipped' => true, 'reason' => 'Dry-run ativo.'];
         }
 
         return $this->withSession($callback);
